@@ -86,6 +86,14 @@ export const Game = {
         this.playerBody.castShadow = true;
         this.player.add(this.playerBody);
         
+        // Weapon/Arm for attack animations
+        this.playerArm = new THREE.Mesh(
+            new THREE.BoxGeometry(0.5, 2, 0.5),
+            new THREE.MeshStandardMaterial({ color: 0xcccccc })
+        );
+        this.playerArm.position.set(1.5, 0, 1);
+        this.player.add(this.playerArm);
+        
         // Head
         const head = new THREE.Mesh(
             new THREE.SphereGeometry(1, 16, 16),
@@ -296,6 +304,20 @@ export const Game = {
             const len = Math.sqrt(dx*dx + dz*dz);
             this.player.position.x += (dx/len) * moveSpeed * dt;
             this.player.position.z += (dz/len) * moveSpeed * dt;
+            
+            // Procedural Walk Animation (Bobbing)
+            const time = Date.now() * 0.015;
+            this.playerBody.position.y = Math.sin(time) * 0.3;
+            this.playerBody.rotation.z = Math.sin(time * 0.5) * 0.1;
+        } else {
+            // Idle Animation
+            this.playerBody.position.y = THREE.MathUtils.lerp(this.playerBody.position.y, 0, 10 * dt);
+            this.playerBody.rotation.z = THREE.MathUtils.lerp(this.playerBody.rotation.z, 0, 10 * dt);
+        }
+        
+        // Attack Animation Reset
+        if (u.attackTimer <= 0 && this.playerArm) {
+            this.playerArm.rotation.x = THREE.MathUtils.lerp(this.playerArm.rotation.x, 0, 10 * dt);
         }
 
         // Aiming (Mouse Raycast)
@@ -322,6 +344,9 @@ export const Game = {
             
             // Aim direction
             const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.player.quaternion).normalize();
+            
+            // Attack Animation (Swing arm)
+            this.playerArm.rotation.x = -Math.PI / 2;
             
             if (avatar.type === 'range') {
                 const proj = new THREE.Mesh(new THREE.TorusGeometry(1, 0.2, 8, 16), new THREE.MeshBasicMaterial({color: avatar.color}));
@@ -470,6 +495,13 @@ export const Game = {
             
             if (u.name === 'Mahasona' && u.stateTimer > 3) {
                 currentSpeed = 0; // Stop moving while leaping
+            }
+            
+            // Procedural Walk Animation for Enemies
+            if (currentSpeed > 0) {
+                const eTime = Date.now() * 0.01 * (currentSpeed / 10);
+                enemy.children[0].position.y = 1 + Math.abs(Math.sin(eTime)) * 0.5;
+                enemy.children[0].rotation.z = Math.sin(eTime) * 0.1;
             }
             
             if (dist > 3) {
