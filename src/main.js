@@ -236,8 +236,6 @@ export const Game = {
             this.updatePlayer(dt);
             this.updateCombat(dt);
             this.updateEnemies(dt);
-            this.updateEnemyProjectiles(dt);
-            this.updateAOEZones(dt);
             this.updateParticles(dt);
             this.updateDamageTexts(dt);
             
@@ -261,6 +259,8 @@ export const Game = {
             // UI Update
             this.healthBar.style.width = Math.max(0, (this.player.userData.hp/100)*100) + '%';
             this.pranaBar.style.width = Math.max(0, (this.player.userData.prana/100)*100) + '%';
+            
+            this.core.updateCamera(this.player.position);
         }
 
         this.core.render();
