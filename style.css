@@ -2,6 +2,7 @@
     --bg-color: #0b0c10;
     --text-color: #c5c6c7;
     --accent-color: #66fcf1;
+    --accent-dark: #45a29e;
     --health-color: #ff4c4c;
     --prana-color: #45a29e;
 }
@@ -21,33 +22,38 @@ body {
 #game-container {
     position: relative;
     width: 800px;
-    box-shadow: 0 0 20px rgba(102, 252, 241, 0.2);
+    box-shadow: 0 0 30px rgba(102, 252, 241, 0.3);
     border: 2px solid #1f2833;
     border-radius: 8px;
     overflow: hidden;
+    background: #000;
 }
 
 header {
     text-align: center;
     background-color: #1f2833;
     padding: 10px;
+    border-bottom: 2px solid var(--accent-dark);
 }
 
 header h1 {
     margin: 0;
     font-family: 'Cinzel', serif;
     color: var(--accent-color);
-    font-size: 24px;
+    font-size: 26px;
+    text-shadow: 0 0 10px var(--accent-color);
 }
 
 header p {
     margin: 5px 0 0;
-    font-size: 12px;
+    font-size: 14px;
 }
+
+#level-display { color: #66fcf1; font-weight: bold; text-shadow: 0 0 5px #66fcf1; }
+#coin-display { color: #ffd700; font-weight: bold; text-shadow: 0 0 5px #ffd700; }
 
 canvas {
     display: block;
-    background-color: #151a22; /* Dark fog look */
     cursor: crosshair;
 }
 
@@ -59,62 +65,135 @@ canvas {
     pointer-events: none;
     display: flex;
     justify-content: space-between;
+    z-index: 10;
+}
+
+#stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 #health-bar-container, #prana-bar-container {
-    width: 200px;
-    height: 15px;
-    background: rgba(0,0,0,0.5);
-    border: 1px solid #fff;
-    border-radius: 4px;
+    width: 250px;
+    height: 18px;
+    background: rgba(0,0,0,0.7);
+    border: 2px solid #fff;
+    border-radius: 6px;
     overflow: hidden;
-    margin-bottom: 5px;
+    box-shadow: 0 0 5px #000;
 }
 
 #health-bar {
     width: 100%;
     height: 100%;
-    background-color: var(--health-color);
+    background: linear-gradient(90deg, #8b0000, var(--health-color));
     transition: width 0.2s;
+    box-shadow: 0 0 10px var(--health-color);
 }
 
 #prana-bar {
     width: 100%;
     height: 100%;
-    background-color: var(--prana-color);
+    background: linear-gradient(90deg, #005f5f, var(--prana-color));
     transition: width 0.2s;
+    box-shadow: 0 0 10px var(--prana-color);
 }
 
 #transformation-dial {
     position: absolute;
     bottom: 30px;
     right: 20px;
-    background: rgba(31, 40, 51, 0.8);
-    padding: 10px;
+    background: rgba(31, 40, 51, 0.9);
+    padding: 15px;
     border-radius: 8px;
     border: 1px solid var(--accent-color);
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 8px;
+    box-shadow: 0 0 15px rgba(102, 252, 241, 0.2);
 }
 
 .dial-option {
-    padding: 5px 10px;
-    font-size: 12px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: bold;
     border: 1px solid transparent;
     border-radius: 4px;
     transition: all 0.3s;
+    background: rgba(0,0,0,0.5);
+    text-align: center;
 }
 
 .dial-option.active {
     border-color: var(--accent-color);
     color: var(--accent-color);
-    text-shadow: 0 0 5px var(--accent-color);
+    background: rgba(102, 252, 241, 0.1);
+    text-shadow: 0 0 8px var(--accent-color);
+    transform: scale(1.05);
+}
+
+/* Screens */
+.screen {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    width: 100%;
+    height: 600px;
+    background: rgba(11, 12, 16, 0.85);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.screen.active {
+    display: flex;
+}
+
+.screen h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 40px;
+    color: var(--accent-color);
+    text-shadow: 0 0 15px var(--accent-color);
+    margin-bottom: 20px;
+}
+
+.screen p {
+    font-size: 16px;
+    line-height: 1.5;
+    max-width: 500px;
+    margin-bottom: 40px;
+}
+
+button {
+    padding: 15px 30px;
+    font-size: 18px;
+    font-family: 'Cinzel', serif;
+    font-weight: bold;
+    color: #fff;
+    background: transparent;
+    border: 2px solid var(--accent-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+}
+
+button:hover {
+    background: var(--accent-color);
+    color: #000;
+    box-shadow: 0 0 20px var(--accent-color);
 }
 
 #instructions {
     background-color: #1f2833;
     padding: 10px;
     text-align: center;
-    font-size: 12px;
+    font-size: 13px;
+    border-top: 1px solid #000;
 }

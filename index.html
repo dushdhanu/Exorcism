@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yaka: Seal of the Graveyard - Prototype</title>
+    <title>Yaka: Seal of the Graveyard</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
@@ -11,16 +11,20 @@
     <div id="game-container">
         <header>
             <h1>Yaka: The Cursed Hour</h1>
-            <p>Prototype - Graveyard Shift | <span id="level-display" style="color: #66fcf1; font-weight: bold;">Level: 1</span> | <span id="coin-display" style="color: #ffd700; font-weight: bold;">Coins: 0/5</span></p>
+            <p>Prototype - Graveyard Shift | <span id="level-display">Level: 1</span> | <span id="coin-display">Coins: 0/5</span></p>
         </header>
         
-        <div id="ui-layer">
-            <div id="health-bar-container">
-                <div id="health-bar"></div>
+        <!-- UI Overlay for Game -->
+        <div id="ui-layer" style="display: none;">
+            <div id="stats-container">
+                <div id="health-bar-container">
+                    <div id="health-bar"></div>
+                </div>
+                <div id="prana-bar-container">
+                    <div id="prana-bar"></div>
+                </div>
             </div>
-            <div id="prana-bar-container">
-                <div id="prana-bar"></div>
-            </div>
+            
             <div id="transformation-dial">
                 <div class="dial-option active" id="avatar-base">Base (B)</div>
                 <div class="dial-option" id="avatar-sun">Sun-Flame (1)</div>
@@ -30,10 +34,23 @@
             </div>
         </div>
 
+        <!-- Screens -->
+        <div id="menu-screen" class="screen active">
+            <h2>Seal of the Graveyard</h2>
+            <p>Sri Lanka’s most feared graveyard spirits have been unleashed. Transform to exploit their weaknesses and collect souls (coins) to cleanse the graveyard.</p>
+            <button id="start-btn">Start Purge</button>
+        </div>
+        
+        <div id="game-over-screen" class="screen">
+            <h2>You Have Been Consumed</h2>
+            <p id="final-score">You reached Level X</p>
+            <button id="restart-btn">Try Again</button>
+        </div>
+
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         
         <div id="instructions">
-            <p><strong>Controls:</strong> WASD to move | Mouse to aim | Left Click to Attack | 1-4 to Transform</p>
+            <p><strong>Controls:</strong> WASD to move | Mouse to aim | Left Click to Attack | 1-4 to Transform | B for Base</p>
         </div>
     </div>
 
