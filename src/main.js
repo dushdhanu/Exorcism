@@ -12,9 +12,20 @@ export const Game = {
     enemies: [],
     projectiles: [],
     particles: [],
-    damageTexts: [], // Floating damage numbers
+    damageTexts: [],
     clock: new THREE.Clock(),
     gameState: 'menu',
+    
+    // Level System
+    currentLevel: 1,
+    timeRemaining: 60,
+    maxTime: 60,
+    levelData: [
+        { demon: 'Mohini', color: 0xffffff, shape: 'ghost', hp: 100 },
+        { demon: 'Mahasona', color: 0xff0000, shape: 'titan', hp: 200 },
+        { demon: 'Kalu Kumaraya', color: 0x330033, shape: 'shadow', hp: 300 },
+        { demon: 'Giri Yaka', color: 0x00ff00, shape: 'blob', hp: 400 }
+    ],
     
     // Camera Shake
     shakeTime: 0,
@@ -23,6 +34,8 @@ export const Game = {
     // UI Elements
     healthBar: document.getElementById('health-bar'),
     pranaBar: document.getElementById('prana-bar'),
+    timerDisplay: document.getElementById('timer-display'),
+    levelDisplay: document.getElementById('level-display'),
     
     // Avatar Stats
     avatars: {
@@ -108,19 +121,45 @@ export const Game = {
 
         document.getElementById('start-btn').addEventListener('click', () => {
             document.getElementById('menu-screen').classList.add('hidden');
-            this.spawnWave();
-            this.gameState = 'playing';
+            document.getElementById('ui-layer').classList.remove('hidden');
+            this.startLevel();
+        });
+        
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            document.getElementById('game-over-screen').classList.add('hidden');
+            this.startLevel(); // Retry same level
+        });
+
+        document.getElementById('next-level-btn').addEventListener('click', () => {
+            document.getElementById('next-level-screen').classList.add('hidden');
+            this.currentLevel++;
+            if (this.currentLevel > this.levelData.length) {
+                this.currentLevel = 1; // loop back or show ultimate win screen
+            }
+            this.startLevel();
         });
 
         this.loop();
     },
     
+    startLevel() {
+        this.gameState = 'playing';
+        this.timeRemaining = this.maxTime;
+        this.player.userData.hp = this.player.userData.maxHp;
+        
+        // Clean up old enemies
+        this.enemies.forEach(e => this.core.scene.remove(e));
+        this.enemies = [];
+        
+        // Update UI
+        this.levelDisplay.innerText = "Level " + this.currentLevel;
+        
+        this.spawnWave();
+    },
+    
     spawnWave() {
-        // Spawn Demons
-        this.createDemon('Mohini', 0xffffff, 20, 20, 18, 50, 'ghost');
-        this.createDemon('Mahasona', 0xff0000, -20, -20, 12, 200, 'titan');
-        this.createDemon('Kalu Kumaraya', 0x330033, 30, -30, 25, 40, 'shadow');
-        this.createDemon('Giri Yaka', 0x00ff00, -30, 30, 15, 80, 'blob');
+        const data = this.levelData[this.currentLevel - 1];
+        this.createDemon(data.demon, data.color, 0, -20, 15, data.hp, data.shape);
     },
 
     createDemon(name, color, x, z, speed, hp, shape) {
@@ -195,6 +234,14 @@ export const Game = {
             this.updateEnemies(dt);
             this.updateParticles(dt);
             this.updateDamageTexts(dt);
+            
+            // Timer logic
+            this.timeRemaining -= dt;
+            this.timerDisplay.innerText = "Time: " + Math.ceil(this.timeRemaining) + "s";
+            
+            if (this.timeRemaining <= 0) {
+                this.triggerGameOver();
+            }
             
             // Screen Shake
             if (this.shakeTime > 0) {
@@ -362,9 +409,14 @@ export const Game = {
             this.enemies = this.enemies.filter(e => e !== enemy);
             this.createParticle(pos, 0xffffff, 40);
             
-            // Respawn for endless prototype
-            setTimeout(() => this.createDemon(enemy.userData.name, 0xff0000, (Math.random()-0.5)*200, (Math.random()-0.5)*200, enemy.userData.speed, enemy.userData.maxHp, enemy.userData.shape), 3000);
+            this.gameState = 'win';
+            document.getElementById('next-level-screen').classList.remove('hidden');
         }
+    },
+
+    triggerGameOver() {
+        this.gameState = 'gameover';
+        document.getElementById('game-over-screen').classList.remove('hidden');
     },
 
     updateEnemies(dt) {
@@ -400,15 +452,13 @@ export const Game = {
             
             if (dist > 3) {
                 dir.normalize();
-                // enemy.lookAt(this.player.position); // Removed to keep billboard flat
                 enemy.position.addScaledVector(dir, currentSpeed * dt);
             } else {
                 // Attack player
-                if(!this.player.userData.dashTimer > 0.5) { // i-frames during start of dash
+                if(!(this.player.userData.dashTimer > 0.5)) { 
                     this.player.userData.hp -= 10 * dt;
                     if(this.player.userData.hp <= 0) {
-                        document.getElementById('game-over-screen').classList.remove('hidden');
-                        this.gameState = 'gameover';
+                        this.triggerGameOver();
                     }
                 }
             }

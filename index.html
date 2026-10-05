@@ -27,7 +27,7 @@
                 </div>
                 <div class="objective-panel">
                     <h2 id="level-display">Wave 1</h2>
-                    <p id="coin-display">Souls: 0 / 5</p>
+                    <p id="timer-display">Time: 60s</p>
                 </div>
             </div>
             
@@ -69,9 +69,17 @@
         
         <div id="game-over-screen" class="screen hidden">
             <div class="screen-content">
-                <h1 class="title death-title">CONSUMED</h1>
-                <p id="final-score" class="score-text">You survived until Wave X</p>
-                <button id="restart-btn" class="btn primary">Resurrect</button>
+                <h1 class="title death-title">GAME OVER</h1>
+                <p id="final-score" class="score-text">You ran out of time or health!</p>
+                <button id="restart-btn" class="btn primary">Retry</button>
+            </div>
+        </div>
+
+        <div id="next-level-screen" class="screen hidden">
+            <div class="screen-content">
+                <h1 class="title">LEVEL CLEARED</h1>
+                <p class="score-text">The demon is vanquished.</p>
+                <button id="next-level-btn" class="btn primary">Next Level</button>
             </div>
         </div>
         
