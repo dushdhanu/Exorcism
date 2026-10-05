@@ -11,6 +11,8 @@ export const Game = {
     playerBody: null,
     enemies: [],
     projectiles: [],
+    enemyProjectiles: [], // for Giri Yaka poison
+    aoeZones: [], // for Mahasona slam
     particles: [],
     damageTexts: [],
     clock: new THREE.Clock(),
@@ -226,6 +228,8 @@ export const Game = {
             this.updatePlayer(dt);
             this.updateCombat(dt);
             this.updateEnemies(dt);
+            this.updateEnemyProjectiles(dt);
+            this.updateAOEZones(dt);
             this.updateParticles(dt);
             this.updateDamageTexts(dt);
             
@@ -421,7 +425,7 @@ export const Game = {
             let currentSpeed = u.speed;
             
             // Simple AI Logic
-            if(u.name === 'Kalu Kumaraya') {
+            if (u.name === 'Kalu Kumaraya') {
                 if(u.stateTimer > 4) {
                     // Teleport behind player
                     const behind = new THREE.Vector3(0,0,-10).applyQuaternion(this.player.quaternion);
@@ -430,10 +434,42 @@ export const Game = {
                     this.createParticle(enemy.position, 0x330033, 20);
                 }
             } else if (u.name === 'Mahasona') {
-                if(u.stateTimer > 3) {
-                    currentSpeed *= 3; // Charge
-                    if(u.stateTimer > 4) u.stateTimer = 0;
+                if(u.stateTimer > 3 && u.stateTimer < 3.1) {
+                    // Telegraph Leap AOE
+                    this.createAOEZone(this.player.position.x, this.player.position.z, 0xff0000, 0, 5, 1.5);
+                    u.leapTarget = this.player.position.clone();
+                } else if (u.stateTimer > 4.5) {
+                    // Execute Leap
+                    enemy.position.x = u.leapTarget.x;
+                    enemy.position.z = u.leapTarget.z;
+                    this.createParticle(enemy.position, 0xff0000, 40);
+                    this.shakeTime = 0.4; this.shakeIntensity = 2.0;
+                    
+                    // Instant burst damage if player is still there
+                    const distToImpact = enemy.position.distanceTo(this.player.position);
+                    if (distToImpact < 5) {
+                        this.player.userData.hp -= 30;
+                        if(this.player.userData.hp <= 0) this.triggerGameOver();
+                    }
+                    u.stateTimer = 0;
                 }
+            } else if (u.name === 'Giri Yaka') {
+                if(u.stateTimer > 3) {
+                    // Spit Poison Arc
+                    const pGeo = new THREE.SphereGeometry(0.5);
+                    const pMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
+                    const proj = new THREE.Mesh(pGeo, pMat);
+                    proj.position.copy(enemy.position);
+                    proj.position.y += 2;
+                    proj.userData = { dir: dir.clone().normalize(), speed: 20, vy: 10 };
+                    this.core.scene.add(proj);
+                    this.enemyProjectiles.push(proj);
+                    u.stateTimer = 0;
+                }
+            }
+            
+            if (u.name === 'Mahasona' && u.stateTimer > 3) {
+                currentSpeed = 0; // Stop moving while leaping
             }
             
             if (dist > 3) {
