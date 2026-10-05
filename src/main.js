@@ -364,7 +364,8 @@ export const Game = {
         u.attackTimer -= dt;
         const avatar = this.avatars[u.currentAvatar];
 
-        if (this.input.mouse.down && u.attackTimer <= 0 && u.prana >= 5) {
+        // Attack with Mouse Click OR 'J' Key on keyboard
+        if ((this.input.mouse.down || this.input.keys['KeyJ']) && u.attackTimer <= 0 && u.prana >= 5) {
             u.prana -= 5;
             u.attackTimer = avatar.cd;
             
