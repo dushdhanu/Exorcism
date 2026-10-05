@@ -40,6 +40,15 @@ canvas.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mousedown', () => mouse.down = true);
 canvas.addEventListener('mouseup', () => mouse.down = false);
 
+// Player object
+const player = {
+    x: 400,
+    y: 300,
+    radius: 15,
+    speed: 200,
+    color: '#c5c6c7'
+};
+
 // Game Loop
 function gameLoop(timestamp) {
     deltaTime = (timestamp - lastTime) / 1000;
@@ -52,7 +61,28 @@ function gameLoop(timestamp) {
 }
 
 function update() {
-    // Game logic goes here
+    // Player movement
+    let dx = 0;
+    let dy = 0;
+    
+    if (keys.w) dy -= 1;
+    if (keys.s) dy += 1;
+    if (keys.a) dx -= 1;
+    if (keys.d) dx += 1;
+    
+    // Normalize diagonal movement
+    if (dx !== 0 && dy !== 0) {
+        const length = Math.sqrt(dx * dx + dy * dy);
+        dx /= length;
+        dy /= length;
+    }
+    
+    player.x += dx * player.speed * deltaTime;
+    player.y += dy * player.speed * deltaTime;
+    
+    // Boundary check
+    player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+    player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
 }
 
 function draw() {
@@ -78,6 +108,23 @@ function draw() {
         ctx.lineTo(canvas.width, i);
         ctx.stroke();
     }
+    
+    // Draw player
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+    ctx.fillStyle = player.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw aim line
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+    ctx.lineTo(player.x + Math.cos(angle) * 30, player.y + Math.sin(angle) * 30);
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.stroke();
 }
 
 // Start game
