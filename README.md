@@ -29,3 +29,9 @@ Players activate their wrist relic to transform in real time. Each form matches 
 * **Ritual Cleanser (Shanthikarma Mystic) vs. Giri Yaka & Gara Yaka:**
   * **Enemy Behavior:** Afflicts the player with status curses, terrain poison, and frantic mask attacks.
   * **Counter:** Uses sacred ash (vibhuti), protective barrier mantras, and counter-curses to turn demonic debuffs back onto them.
+
+## 3. Key Gameplay Features
+
+* **Relic Transformation System (Dial-Swap):** Real-time transformation wheel with an energy meter (Prana). Swapping mid-combo allows fluid aerial-to-ground chain attacks.
+* **"Desperation Climax" (Grave Convergence):** At designated wave peaks or low health thresholds, all lingering ghosts converge in a chaotic multi-boss assault. Players must rapidly cycle through multiple transformations mid-fight—using the wind form to dodge Kalu Kumaraya while using solar pulses to keep Mohini at bay and heavy armor to tank Mahasona’s ground slams.
+* **Interactive Graveyard Environment:** Breakable crypts, ancient bell towers to ring for stun waves, sacred bo-tree shrines for recharging stamina, and mud pits that slow down movement.
