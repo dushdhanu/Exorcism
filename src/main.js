@@ -12,8 +12,13 @@ export const Game = {
     enemies: [],
     projectiles: [],
     particles: [],
+    damageTexts: [], // Floating damage numbers
     clock: new THREE.Clock(),
     gameState: 'menu',
+    
+    // Camera Shake
+    shakeTime: 0,
+    shakeIntensity: 0,
     
     // UI Elements
     healthBar: document.getElementById('health-bar'),
@@ -156,6 +161,30 @@ export const Game = {
         }
     },
 
+    createDamageText(pos, amount, color=0xffffff) {
+        // Simple 3D text using a sprite canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = 128; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(amount.toString(), 64, 48);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 3;
+        ctx.strokeText(amount.toString(), 64, 48);
+        
+        const tex = new THREE.CanvasTexture(canvas);
+        const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.position.copy(pos);
+        sprite.position.y += 3;
+        sprite.scale.set(4, 2, 1);
+        sprite.userData = { life: 1.0, vy: 5 };
+        this.core.scene.add(sprite);
+        this.damageTexts.push(sprite);
+    },
+
     loop() {
         requestAnimationFrame(() => this.loop());
         const dt = this.clock.getDelta();
@@ -165,7 +194,16 @@ export const Game = {
             this.updateCombat(dt);
             this.updateEnemies(dt);
             this.updateParticles(dt);
-            this.core.updateCamera(this.player.position);
+            this.updateDamageTexts(dt);
+            
+            // Screen Shake
+            if (this.shakeTime > 0) {
+                this.shakeTime -= dt;
+                const rx = (Math.random() - 0.5) * this.shakeIntensity;
+                const ry = (Math.random() - 0.5) * this.shakeIntensity;
+                this.core.camera.position.x += rx;
+                this.core.camera.position.y += ry;
+            }
             
             // UI Update
             this.healthBar.style.width = Math.max(0, (this.player.userData.hp/100)*100) + '%';
@@ -245,7 +283,6 @@ export const Game = {
             dir.y = 0;
             
             if (avatar.type === 'range') {
-                // Shoot Chakram
                 const proj = new THREE.Mesh(new THREE.TorusGeometry(1, 0.2, 8, 16), new THREE.MeshBasicMaterial({color: avatar.color}));
                 proj.position.copy(this.player.position);
                 proj.position.y += 1;
@@ -254,11 +291,10 @@ export const Game = {
                 this.core.scene.add(proj);
                 this.projectiles.push(proj);
             } else if (avatar.type === 'melee_heavy') {
-                // Earth Shockwave
                 this.createParticle(this.player.position.clone().add(dir.clone().multiplyScalar(4)), avatar.color, 30);
+                this.shakeTime = 0.3; this.shakeIntensity = 1.5; // Heavy screen shake
                 this.checkMeleeHit(dir, 10, 40, avatar);
             } else if (avatar.type === 'melee_fast') {
-                // Wind Slash
                 this.createParticle(this.player.position.clone().add(dir.clone().multiplyScalar(3)), avatar.color, 10);
                 this.checkMeleeHit(dir, 6, 15, avatar);
             } else if (avatar.type === 'flamethrower') {
@@ -307,6 +343,20 @@ export const Game = {
     damageEnemy(enemy, amount, pos) {
         enemy.userData.hp -= amount;
         this.createParticle(pos, 0xff0000, 10);
+        this.createDamageText(pos, amount, 0xff3333);
+        
+        // Hit flash (make it white briefly)
+        if(enemy.children[0].material) {
+            const oldColor = enemy.children[0].material.color.getHex();
+            enemy.children[0].material.color.setHex(0xffffff);
+            setTimeout(() => { if(enemy.children[0]) enemy.children[0].material.color.setHex(oldColor); }, 100);
+        }
+        
+        // Knockback
+        const kbDir = new THREE.Vector3().subVectors(enemy.position, this.player.position).normalize();
+        kbDir.y = 0;
+        enemy.position.addScaledVector(kbDir, 2); // Push back 2 units
+
         if(enemy.userData.hp <= 0) {
             this.core.scene.remove(enemy);
             this.enemies = this.enemies.filter(e => e !== enemy);
@@ -379,6 +429,21 @@ export const Game = {
             if(p.userData.life <= 0) {
                 this.core.scene.remove(p);
                 this.particles.splice(i, 1);
+            }
+        }
+    },
+
+    updateDamageTexts(dt) {
+        for(let i=this.damageTexts.length-1; i>=0; i--) {
+            const txt = this.damageTexts[i];
+            txt.position.y += txt.userData.vy * dt;
+            txt.userData.life -= dt;
+            txt.material.opacity = txt.userData.life;
+            if(txt.userData.life <= 0) {
+                this.core.scene.remove(txt);
+                txt.material.map.dispose();
+                txt.material.dispose();
+                this.damageTexts.splice(i, 1);
             }
         }
     }
