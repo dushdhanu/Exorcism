@@ -45,9 +45,41 @@ const player = {
     x: 400,
     y: 300,
     radius: 15,
+    baseSpeed: 200,
     speed: 200,
-    color: '#c5c6c7'
+    color: '#c5c6c7',
+    currentForm: 'base'
 };
+
+const avatars = {
+    base: { color: '#c5c6c7', speed: 200, radius: 15 },
+    sun: { color: '#ffb347', speed: 180, radius: 18 },    // Sun-Flame Avatar
+    earth: { color: '#8b4513', speed: 120, radius: 25 },   // Earth-Breaker Titan
+    gale: { color: '#aeeeee', speed: 300, radius: 12 },    // Gale-Blade Hunter
+    mystic: { color: '#dda0dd', speed: 200, radius: 15 }   // Ritual Cleanser
+};
+
+// UI Elements
+const dialOptions = {
+    base: document.getElementById('avatar-base'),
+    sun: document.getElementById('avatar-sun'),
+    earth: document.getElementById('avatar-earth'),
+    gale: document.getElementById('avatar-gale'),
+    mystic: document.getElementById('avatar-mystic')
+};
+
+function transform(form) {
+    if (player.currentForm === form) return;
+    
+    player.currentForm = form;
+    player.color = avatars[form].color;
+    player.speed = avatars[form].speed;
+    player.radius = avatars[form].radius;
+    
+    // Update UI
+    Object.values(dialOptions).forEach(el => el.classList.remove('active'));
+    dialOptions[form].classList.add('active');
+}
 
 // Game Loop
 function gameLoop(timestamp) {
@@ -61,6 +93,13 @@ function gameLoop(timestamp) {
 }
 
 function update() {
+    // Transformations
+    if (keys['b']) transform('base');
+    if (keys['1']) transform('sun');
+    if (keys['2']) transform('earth');
+    if (keys['3']) transform('gale');
+    if (keys['4']) transform('mystic');
+
     // Player movement
     let dx = 0;
     let dy = 0;
