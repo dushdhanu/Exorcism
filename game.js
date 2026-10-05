@@ -4,6 +4,55 @@ const ctx = canvas.getContext('2d');
 // Game state
 let lastTime = 0;
 let deltaTime = 0;
+let currentLevel = 1;
+let coinsCollected = 0;
+let coinsNeeded = 5;
+const coins = []; // Coin objects
+
+// Audio Setup
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+    
+    if (type === 'shoot') { // Hero sound
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+    } else if (type === 'hit') { // Ghost sound
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    } else if (type === 'coin') { // Hero sound
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.setValueAtTime(1200, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    } else if (type === 'levelup') { // Epic Hero Sound
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(600, now + 0.3);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.5);
+    }
+}
 
 // Input handling
 const keys = {
@@ -59,12 +108,16 @@ const projectiles = [];
 const enemies = [];
 
 function spawnEnemy() {
-    const types = [
-        { type: 'Mohini', radius: 12, hp: 30, speed: 100, damage: 10 },
-        { type: 'Mahasona', radius: 25, hp: 80, speed: 60, damage: 25 }
+    const levelData = [
+        { type: 'Mohini', radius: 12, hp: 30, speed: 100, damage: 10, color: '#ffffff' }, // Level 1
+        { type: 'Mahasona', radius: 25, hp: 80, speed: 60, damage: 25, color: '#4a0000' }, // Level 2
+        { type: 'Kalu Kumaraya', radius: 10, hp: 20, speed: 150, damage: 15, color: '#000000' }, // Level 3
+        { type: 'Giri Yaka', radius: 20, hp: 50, speed: 90, damage: 20, color: '#228b22' } // Level 4
     ];
-    const rand = Math.random();
-    const type = rand > 0.5 ? types[0] : types[1];
+    
+    // Spawn ghost based on current level (loop around if > 4)
+    const typeIdx = (currentLevel - 1) % levelData.length;
+    const type = levelData[typeIdx];
     
     // Spawn at edge
     let x, y;
@@ -82,6 +135,8 @@ function spawnEnemy() {
 function updateUI() {
     document.getElementById('health-bar').style.width = (player.health / player.maxHealth) * 100 + '%';
     document.getElementById('prana-bar').style.width = (player.prana / player.maxPrana) * 100 + '%';
+    document.getElementById('level-display').innerText = 'Level: ' + currentLevel;
+    document.getElementById('coin-display').innerText = 'Coins: ' + coinsCollected + '/' + coinsNeeded;
 }
 
 const avatars = {
@@ -158,6 +213,7 @@ function update() {
     
     // Combat (Shooting)
     if (mouse.down && player.prana >= 1) {
+        playSound('shoot');
         const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
         projectiles.push({
             x: player.x,
@@ -189,6 +245,31 @@ function update() {
             projectiles.splice(i, 1);
         }
     }
+
+    // Update Coins
+    for (let i = coins.length - 1; i >= 0; i--) {
+        const c = coins[i];
+        const cx = player.x - c.x;
+        const cy = player.y - c.y;
+        if (Math.sqrt(cx*cx + cy*cy) < player.radius + c.radius) {
+            coins.splice(i, 1);
+            coinsCollected++;
+            playSound('coin');
+            updateUI();
+            
+            // Check Level up
+            if (coinsCollected >= coinsNeeded) {
+                currentLevel++;
+                coinsCollected = 0;
+                coinsNeeded = currentLevel * 5; // Next level needs more coins
+                enemies.length = 0; // Clear enemies
+                projectiles.length = 0; // Clear projectiles
+                playSound('levelup');
+                player.health = player.maxHealth; // Heal on level up
+                updateUI();
+            }
+        }
+    }
     
     // Update Enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -218,13 +299,18 @@ function update() {
             if (pdist < e.radius + p.radius) {
                 // Tactical matchup mechanic
                 let dmg = 10;
-                if (e.type === 'Mohini' && p.form === 'sun') dmg *= 2; // Sun counters Mohini
-                if (e.type === 'Mahasona' && p.form === 'earth') dmg *= 2; // Earth counters Mahasona
+                if (e.type === 'Mohini' && p.form === 'sun') dmg *= 2; 
+                if (e.type === 'Mahasona' && p.form === 'earth') dmg *= 2; 
+                if (e.type === 'Kalu Kumaraya' && p.form === 'gale') dmg *= 2;
+                if (e.type === 'Giri Yaka' && p.form === 'mystic') dmg *= 2;
                 
                 e.hp -= dmg;
                 projectiles.splice(j, 1);
                 
                 if (e.hp <= 0) {
+                    playSound('hit');
+                    // Drop coin
+                    coins.push({ x: e.x, y: e.y, radius: 8 });
                     enemies.splice(i, 1);
                     break;
                 }
@@ -282,9 +368,20 @@ function draw() {
         ctx.fill();
     });
 
+    // Draw coins
+    ctx.fillStyle = '#ffd700'; // Gold
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#ffd700';
+    coins.forEach(c => {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.shadowBlur = 0; // Reset shadow
+
     // Draw enemies
     enemies.forEach(e => {
-        ctx.fillStyle = e.type === 'Mohini' ? '#ffffff' : '#4a0000'; // White for Mohini, dark red for Mahasona
+        ctx.fillStyle = e.color || '#ff0000'; 
         ctx.beginPath();
         ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
         ctx.fill();
