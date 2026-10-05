@@ -19,11 +19,11 @@ export class Core3D {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0x222233);
+        // Lighting - Make everything CLEAR and BRIGHT
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         this.scene.add(ambientLight);
 
-        this.dirLight = new THREE.DirectionalLight(0x6688cc, 1.5);
+        this.dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
         this.dirLight.position.set(20, 40, 20);
         this.dirLight.castShadow = true;
         this.dirLight.shadow.mapSize.width = 2048;

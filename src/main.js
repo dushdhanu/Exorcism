@@ -91,24 +91,27 @@ export const Game = {
         const loader = new GLTFLoader();
         loader.load('/models/Soldier.glb', (gltf) => {
             const model = gltf.scene;
-            model.scale.set(1.5, 1.5, 1.5);
+            model.scale.set(3.0, 3.0, 3.0); // Make him bigger so he is clearly visible
+            model.position.y = 0;
             
             // Find materials to tint
             this.playerMaterials = [];
             model.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
-                    // Clone material so we can safely edit colors
                     child.material = child.material.clone();
                     this.playerMaterials.push(child.material);
                 }
             });
 
             this.playerModel = model;
-            
-            // Replace placeholder with Human Model
             this.player.remove(this.playerBody);
             this.player.add(model);
+            
+            // Add a personal light so the player is always brightly lit
+            const personalLight = new THREE.PointLight(0xffffff, 2, 20);
+            personalLight.position.set(0, 5, 2);
+            this.player.add(personalLight);
             
             // Animations
             this.mixer = new THREE.AnimationMixer(model);
@@ -190,7 +193,8 @@ export const Game = {
         
         let mesh;
         if(shape === 'ghost') {
-            mesh = new THREE.Mesh(new THREE.ConeGeometry(1.5, 4, 16), new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.7 }));
+            // Make Mohini clearly visible and bright white
+            mesh = new THREE.Mesh(new THREE.ConeGeometry(1.5, 4, 16), new THREE.MeshStandardMaterial({ color, emissive: 0xffffff, emissiveIntensity: 0.8, transparent: true, opacity: 0.9 }));
             mesh.position.y = 1;
         } else if (shape === 'titan') {
             mesh = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 4), new THREE.MeshStandardMaterial({ color }));
