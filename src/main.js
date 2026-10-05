@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Core3D } from './engine/Core3D.js';
 import { Input } from './engine/Input.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const canvas = document.getElementById('gameCanvas');
 
@@ -74,34 +75,49 @@ export const Game = {
             this.core.scene.add(tomb);
         }
 
-        // Build 3D Humanoid Player
+        // Build Player Group
         this.player = new THREE.Group();
-        this.player.position.y = 2;
+        this.player.position.y = 0;
         
-        // Body
+        // Placeholder Body (until GLTF loads)
         this.playerBody = new THREE.Mesh(
             new THREE.BoxGeometry(2, 3, 2),
-            new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x442200 })
+            new THREE.MeshStandardMaterial({ color: 0xffaa00 })
         );
-        this.playerBody.castShadow = true;
+        this.playerBody.position.y = 1.5;
         this.player.add(this.playerBody);
         
-        // Weapon/Arm for attack animations
-        this.playerArm = new THREE.Mesh(
-            new THREE.BoxGeometry(0.5, 2, 0.5),
-            new THREE.MeshStandardMaterial({ color: 0xcccccc })
-        );
-        this.playerArm.position.set(1.5, 0, 1);
-        this.player.add(this.playerArm);
-        
-        // Head
-        const head = new THREE.Mesh(
-            new THREE.SphereGeometry(1, 16, 16),
-            new THREE.MeshStandardMaterial({ color: 0xffccaa })
-        );
-        head.position.y = 2.5;
-        this.player.add(head);
-        
+        // Load Human GLTF Model
+        const loader = new GLTFLoader();
+        loader.load('/models/Soldier.glb', (gltf) => {
+            const model = gltf.scene;
+            model.scale.set(1.5, 1.5, 1.5);
+            
+            // Find materials to tint
+            this.playerMaterials = [];
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    // Clone material so we can safely edit colors
+                    child.material = child.material.clone();
+                    this.playerMaterials.push(child.material);
+                }
+            });
+
+            this.playerModel = model;
+            
+            // Replace placeholder with Human Model
+            this.player.remove(this.playerBody);
+            this.player.add(model);
+            
+            // Animations
+            this.mixer = new THREE.AnimationMixer(model);
+            this.actionIdle = this.mixer.clipAction(gltf.animations.find(a => a.name === 'Idle'));
+            this.actionRun = this.mixer.clipAction(gltf.animations.find(a => a.name === 'Run'));
+            this.actionIdle.play();
+            this.currentAction = this.actionIdle;
+        });
+
         this.player.userData = { 
             speed: 30, dashTimer: 0, hp: 100, maxHp: 100, 
             prana: 100, maxPrana: 100, attackTimer: 0, currentAvatar: 'Digit1'
@@ -252,6 +268,8 @@ export const Game = {
             this.updateParticles(dt);
             this.updateDamageTexts(dt);
             
+            if (this.mixer) this.mixer.update(dt);
+            
             // Timer logic
             this.timeRemaining -= dt;
             this.timerDisplay.innerText = "Time: " + Math.ceil(this.timeRemaining) + "s";
@@ -283,8 +301,17 @@ export const Game = {
         const u = this.player.userData;
         const avatar = this.avatars[key];
         if (avatar && u.currentAvatar !== key) {
-            this.playerBody.material.color.setHex(avatar.color);
-            this.playerBody.material.emissive.setHex(avatar.color).multiplyScalar(0.3);
+            
+            // Tint Human model based on Avatar element
+            if(this.playerMaterials) {
+                this.playerMaterials.forEach(mat => {
+                    mat.color.setHex(avatar.color);
+                    mat.emissive.setHex(avatar.color).multiplyScalar(0.2); // slight glow
+                });
+            } else if (this.playerBody) {
+                this.playerBody.material.color.setHex(avatar.color);
+            }
+
             u.speed = avatar.speed;
             u.currentAvatar = key;
             this.createParticle(this.player.position, avatar.color, 30);
@@ -331,19 +358,17 @@ export const Game = {
             this.player.position.x += (dx/len) * moveSpeed * dt;
             this.player.position.z += (dz/len) * moveSpeed * dt;
             
-            // Procedural Walk Animation (Bobbing)
-            const time = Date.now() * 0.015;
-            this.playerBody.position.y = Math.sin(time) * 0.3;
-            this.playerBody.rotation.z = Math.sin(time * 0.5) * 0.1;
+            if (this.mixer && this.currentAction !== this.actionRun) {
+                this.actionRun.reset().fadeIn(0.2).play();
+                this.actionIdle.fadeOut(0.2);
+                this.currentAction = this.actionRun;
+            }
         } else {
-            // Idle Animation
-            this.playerBody.position.y = THREE.MathUtils.lerp(this.playerBody.position.y, 0, 10 * dt);
-            this.playerBody.rotation.z = THREE.MathUtils.lerp(this.playerBody.rotation.z, 0, 10 * dt);
-        }
-        
-        // Attack Animation Reset
-        if (u.attackTimer <= 0 && this.playerArm) {
-            this.playerArm.rotation.x = THREE.MathUtils.lerp(this.playerArm.rotation.x, 0, 10 * dt);
+            if (this.mixer && this.currentAction !== this.actionIdle) {
+                this.actionIdle.reset().fadeIn(0.2).play();
+                this.actionRun.fadeOut(0.2);
+                this.currentAction = this.actionIdle;
+            }
         }
 
         // Aiming (Mouse Raycast)
