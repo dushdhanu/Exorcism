@@ -42,6 +42,29 @@ export const Game = {
         ground.receiveShadow = true;
         this.core.scene.add(ground);
         
+        // Load the Concept Art Texture
+        const textureLoader = new THREE.TextureLoader();
+        const conceptTex = textureLoader.load('/concept.jpg');
+        
+        // Define cropped materials from the triptych image
+        // Left Panel (Siblings)
+        this.playerMat = new THREE.MeshBasicMaterial({ map: conceptTex.clone(), transparent: true, side: THREE.DoubleSide });
+        this.playerMat.map.repeat.set(1/3, 1);
+        this.playerMat.map.offset.set(0, 0);
+
+        // Right Panel (Demons)
+        this.demonMat = new THREE.MeshBasicMaterial({ map: conceptTex.clone(), transparent: true, side: THREE.DoubleSide });
+        this.demonMat.map.repeat.set(1/3, 1);
+        this.demonMat.map.offset.set(2/3, 0);
+        
+        // Middle Panel (Background Arena element)
+        const arenaTex = conceptTex.clone();
+        arenaTex.repeat.set(1/3, 1);
+        arenaTex.offset.set(1/3, 0);
+        const arenaBillboard = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshBasicMaterial({ map: arenaTex, transparent: true, side: THREE.DoubleSide }));
+        arenaBillboard.position.set(0, 50, -100);
+        this.core.scene.add(arenaBillboard);
+        
         // Tombstones
         for(let i=0; i<80; i++) {
             const h = 2 + Math.random()*3;
@@ -54,26 +77,20 @@ export const Game = {
             this.core.scene.add(tomb);
         }
 
-        // Build Humanoid Player
+        // Build 2.5D Player Billboard
         this.player = new THREE.Group();
-        this.player.position.y = 2;
+        this.player.position.y = 5;
         
-        // Body
+        // Use a plane with the Siblings texture instead of a block
         this.playerBody = new THREE.Mesh(
-            new THREE.BoxGeometry(2, 3, 2),
-            new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x442200 })
+            new THREE.PlaneGeometry(8, 10),
+            this.playerMat
         );
-        this.playerBody.castShadow = true;
+        // Ensure the plane always stands up
         this.player.add(this.playerBody);
         
-        // Head
-        const head = new THREE.Mesh(
-            new THREE.SphereGeometry(1, 16, 16),
-            new THREE.MeshStandardMaterial({ color: 0xffccaa })
-        );
-        head.position.y = 2.5;
-        this.player.add(head);
-
+        // Head logic removed because we are using the 2.5D billboard sprite
+        
         this.player.userData = { 
             speed: 30, dashTimer: 0, hp: 100, maxHp: 100, 
             prana: 100, maxPrana: 100, attackTimer: 0, currentAvatar: 'Digit1'
@@ -103,30 +120,19 @@ export const Game = {
 
     createDemon(name, color, x, z, speed, hp, shape) {
         const demon = new THREE.Group();
-        demon.position.set(x, 2, z);
+        demon.position.set(x, 5, z);
         
-        let mesh;
-        if(shape === 'ghost') {
-            mesh = new THREE.Mesh(new THREE.ConeGeometry(1.5, 4, 16), new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.7 }));
-            mesh.position.y = 1;
-        } else if (shape === 'titan') {
-            mesh = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 4), new THREE.MeshStandardMaterial({ color }));
-            mesh.position.y = 1;
-        } else if (shape === 'blob') {
-            mesh = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16), new THREE.MeshStandardMaterial({ color }));
-        } else {
-            mesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 3), new THREE.MeshStandardMaterial({ color }));
-        }
+        // Use the Demon texture for all enemies instead of primitive blocks
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(8, 10), this.demonMat);
         
-        mesh.castShadow = true;
         demon.add(mesh);
         
-        // Eyes
+        // Eyes (Keep glowing red eyes for gameplay clarity)
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.2), eyeMat);
-        eye1.position.set(0.5, shape==='titan'?2:1, 1.5);
-        const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.2), eyeMat);
-        eye2.position.set(-0.5, shape==='titan'?2:1, 1.5);
+        const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.3), eyeMat);
+        eye1.position.set(0.5, 2, 0.5);
+        const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.3), eyeMat);
+        eye2.position.set(-0.5, 2, 0.5);
         demon.add(eye1); demon.add(eye2);
 
         demon.userData = { name, speed, hp, maxHp: hp, shape, stateTimer: 0 };
@@ -172,13 +178,12 @@ export const Game = {
     updatePlayer(dt) {
         const u = this.player.userData;
         
-        // Avatar Swapping
+        // Avatar Swapping (Change tint of the 2.5D texture instead of the whole block color)
         Object.keys(this.avatars).forEach(key => {
             if(this.input.keys[key]) {
                 const avatar = this.avatars[key];
                 if(u.currentAvatar !== key) {
                     this.playerBody.material.color.setHex(avatar.color);
-                    this.playerBody.material.emissive.setHex(avatar.color).multiplyScalar(0.3);
                     u.speed = avatar.speed;
                     u.currentAvatar = key;
                     this.createParticle(this.player.position, avatar.color, 20);
@@ -209,14 +214,17 @@ export const Game = {
             this.player.position.z += (dz/len) * moveSpeed * dt;
         }
 
-        // Aiming (Mouse Raycast)
+        // Aiming (Mouse Raycast) - Keep billboarding player towards camera
+        this.playerBody.quaternion.copy(this.core.camera.quaternion);
+
         this.raycaster.setFromCamera(
             new THREE.Vector2((this.input.mouse.x / window.innerWidth) * 2 - 1, -(this.input.mouse.y / window.innerHeight) * 2 + 1),
             this.core.camera
         );
         const target = new THREE.Vector3();
         this.raycaster.ray.intersectPlane(this.mousePlane, target);
-        this.player.lookAt(target.x, this.player.position.y, target.z);
+        // Store target direction for combat, but don't rotate the 2.5D sprite
+        u.lookTarget = target;
 
         // Prana regen
         if(u.prana < u.maxPrana) u.prana += 10 * dt;
@@ -231,8 +239,10 @@ export const Game = {
             u.prana -= 5;
             u.attackTimer = avatar.cd;
             
-            // Aim direction
-            const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.player.quaternion).normalize();
+            // Aim direction (using the stored lookTarget)
+            const targetVec = u.lookTarget ? u.lookTarget.clone() : new THREE.Vector3(0,0,1);
+            const dir = new THREE.Vector3().subVectors(targetVec, this.player.position).normalize();
+            dir.y = 0;
             
             if (avatar.type === 'range') {
                 // Shoot Chakram
@@ -334,9 +344,13 @@ export const Game = {
                 }
             }
             
+            // Billboard demons towards the camera
+            const mesh = enemy.children[0];
+            if(mesh) mesh.quaternion.copy(this.core.camera.quaternion);
+            
             if (dist > 3) {
                 dir.normalize();
-                enemy.lookAt(this.player.position);
+                // enemy.lookAt(this.player.position); // Removed to keep billboard flat
                 enemy.position.addScaledVector(dir, currentSpeed * dt);
             } else {
                 // Attack player
