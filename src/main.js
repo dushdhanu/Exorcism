@@ -132,6 +132,19 @@ export const Game = {
             this.startLevel();
         });
 
+        // Click listeners for Avatar UI
+        const avatarMap = {
+            'avatar-sun': 'Digit1',
+            'avatar-earth': 'Digit2',
+            'avatar-gale': 'Digit3',
+            'avatar-mystic': 'Digit4'
+        };
+        Object.keys(avatarMap).forEach(id => {
+            document.getElementById(id).addEventListener('click', () => {
+                this.swapAvatar(avatarMap[id]);
+            });
+        });
+
         this.loop();
     },
     
@@ -266,20 +279,33 @@ export const Game = {
         this.core.render();
     },
     
+    swapAvatar(key) {
+        const u = this.player.userData;
+        const avatar = this.avatars[key];
+        if (avatar && u.currentAvatar !== key) {
+            this.playerBody.material.color.setHex(avatar.color);
+            this.playerBody.material.emissive.setHex(avatar.color).multiplyScalar(0.3);
+            u.speed = avatar.speed;
+            u.currentAvatar = key;
+            this.createParticle(this.player.position, avatar.color, 30);
+            
+            // Update UI Active Class
+            document.querySelectorAll('.dial-option').forEach(el => el.classList.remove('active'));
+            const idMap = { 'Digit1': 'avatar-sun', 'Digit2': 'avatar-earth', 'Digit3': 'avatar-gale', 'Digit4': 'avatar-mystic' };
+            const activeId = idMap[key];
+            if (activeId) {
+                document.getElementById(activeId).classList.add('active');
+            }
+        }
+    },
+
     updatePlayer(dt) {
         const u = this.player.userData;
         
-        // Avatar Swapping
+        // Avatar Swapping via Keyboard
         Object.keys(this.avatars).forEach(key => {
             if(this.input.keys[key]) {
-                const avatar = this.avatars[key];
-                if(u.currentAvatar !== key) {
-                    this.playerBody.material.color.setHex(avatar.color);
-                    this.playerBody.material.emissive.setHex(avatar.color).multiplyScalar(0.3);
-                    u.speed = avatar.speed;
-                    u.currentAvatar = key;
-                    this.createParticle(this.player.position, avatar.color, 20);
-                }
+                this.swapAvatar(key);
             }
         });
 
