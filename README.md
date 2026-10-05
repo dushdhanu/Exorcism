@@ -1,3 +1,26 @@
-# Yaka: The Cursed Hour (3D)
+# Yaka: Seal of the Sohena
 
-Yaka: The Cursed Hour is an intense 3D arena fighting game set in a misty, overgrown Sri Lankan graveyard where players control siblings who have unearthed the ancient Yantra Bandhana. This artifact allows them to instantly transform into different ancestral warrior-avatars mid-combat to exploit the elemental weaknesses of feared demons (Yakkas) like Mohini and Mahasona. As demonic hordes pour through shattered dimensional boundaries, players must master fluid 3D combat, dodge mechanics, and tactical avatar-swapping to survive escalating waves, collect souls to unlock power-ups, and ultimately seal the graveyard.
+## Project Overview & Genre:
+A high-octane, dark fantasy 3D supernatural character-action fighting game set inside a rain-swept, fog-shrouded ancient Sri Lankan graveyard (sohena) overgrown with twisted banyan roots, moss-covered colonial crypts, cracked stone stupas, and clay fire bowls (pandam). The player controls one of two brave siblings—a young boy or girl—armed with an ancient mystic wrist relic (Yantra Bandhana) inspired by the Omnitrix dial mechanic. The relic allows instantaneous mid-combat transformation into four specialized ancestral warrior-avatars, each engineered to counter iconic demons and spirits from Sri Lankan folklore.
+
+## 1. Transformation Avatars & Combat Kits
+The core combat loop relies on dynamic real-time swapping mid-combo, utilizing light, heavy, directional, and Prana-gauge ultimate inputs:
+
+* **Suriya Divya (Solar Radiant Avatar — Zoner & Anti-Illusionist):** Wields dual burning solar chakrams. Features light crescent slashes, focused beam thrusts, the projectile-based Surya Chakra, a radial Blinding Flare that dispels ethereal clones and exposes cloaked entities, an orbiting defensive ring to absorb curses, and the cinematic finisher *Maha Surya Mandala*, which pins demons to an ancient sundial before obliterating them with a column of pure sunlight.
+* **Maha Gaja (Earth-Breaker Titan — Hyper-Armor Juggernaut):** Wields a colossal granite club wrapped in temple chains. Employs heavy guard-crushing swings, forward seismic shockwaves (Quake Shatter), a rock-skin armor buff (Rune Bastion) granting 60% damage mitigation and hitstun immunity, an earth-scooping launch attack, and the finisher *Yaksha Bhu-Garbha*, which entombs giants inside erupting stone pillars before shattering them with a full-torque rotational club strike.
+* **Vayu Yodheya (Gale-Blade Hunter — Aerial Assassin & Speedster):** Wields twin curved Kastane swords sheathed in razor winds. Executes rapid multi-hit flurry lacerations, anti-air cyclone spins (Updraft Vortex), an invulnerable wind-dash (Breeze-Step Slash) that bypasses darkness and teleports behind foes, evasive decoy mirages, and the finisher *Sahasra Vata Praharaya*, delivering a blinding sequence of high-speed airborne slashes that shreds enemies into spirit ash.
+* **Shanthikarma Mystic (Ritual Exorcist — Trap-Setter & Status Cleanser):** Wields a consecrated cane (Atavisi Kolaya) and a sacred fire torch (Pandama). Cleanses terrain with sacred ash dust, unleashes conical resin-fueled flamethrowers (Gini Bintura), places binding floor mandalas (Kovil Seal) that strip enemy armor, reverses active status debuffs back at bosses with Curse Inversion, and triggers the finisher *Maha Gini Shanthikarma*, which entraps demons in consecrated red threads and ritual pyres.
+
+## 2. Folklore Boss Encounters, Phases & Telegraphs
+Boss battles feature a universal telegraph system (**Red Glint** = Unblockable; **Blue Glint** = Parriable; **Purple Miasma** = Avatar-Specific Cleansing):
+
+* **Mahasona (The Cemetery Giant):** Attacks with wide 180° club swings telegraphed by crimson eye glints, sends a pouncing black spectral hound that must be dodged to leave it dazed, and leaps high to trigger full-arena earth quakes. In Phase 2, he mounts his hound for triple-pass graveyard stampedes that must be halted head-on with Maha Gaja’s charged club smashes.
+* **Mohini (The Ethereal Siren):** Confuses players using 3D audio cues from an explosive decoy swaddled infant and summons mirrored clones that invert player controls until dispelled by Suriya Divya’s solar flares. In Phase 2, she dissolves into graveyard fog to strike blindly from the mist and levitates to channel an arena-wide hysteria shriek.
+* **Kalu Kumaraya (The Shadow Prince):** Teleports behind players via violet floor pools heralded by jingling jewelry, blinds the lock-on camera with miasma bombs, and executes a deadly five-directional supersonic stiletto waltz requiring Vayu Yodheya’s rapid parries and mist-steps.
+* **Giri Yaka (The Affliction Demon):** Spews lingering emerald bile pools from his swollen gut and hurls pulsing poison effigy skulls across the arena. In Phase 2, he performs a frenzied, erratic Raksha mask dance dropping status needles and brands the player with a mirror-damage blood seal.
+
+## 3. Desperation Climax & Tag Dynamics
+The game's signature climax mode occurs when all lingering demons invade the graveyard arena simultaneously in a relentless, synchronized assault:
+
+* Players must dynamically **tag-cancel** between heroes mid-combo (e.g., launching an enemy with the Gale-Blade, swapping mid-air to Earth Titan to spike them into the ground, and swapping to Mystic to lay a fire seal).
+* Dropping below 25% health unlocks the **Anuradhapura Awakening**, a temporary super-state that fuses the attributes of all four forms—combining heavy rock armor, supersonic wind dashes, solar light projection, and sacred fire wards—giving the player a fighting chance to turn the tide, cleanse the ancient graveyard, and seal the demon horde once and for all.
