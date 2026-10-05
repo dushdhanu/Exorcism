@@ -48,8 +48,41 @@ const player = {
     baseSpeed: 200,
     speed: 200,
     color: '#c5c6c7',
-    currentForm: 'base'
+    currentForm: 'base',
+    health: 100,
+    maxHealth: 100,
+    prana: 100,
+    maxPrana: 100
 };
+
+const projectiles = [];
+const enemies = [];
+
+function spawnEnemy() {
+    const types = [
+        { type: 'Mohini', radius: 12, hp: 30, speed: 100, damage: 10 },
+        { type: 'Mahasona', radius: 25, hp: 80, speed: 60, damage: 25 }
+    ];
+    const rand = Math.random();
+    const type = rand > 0.5 ? types[0] : types[1];
+    
+    // Spawn at edge
+    let x, y;
+    if (Math.random() > 0.5) {
+        x = Math.random() > 0.5 ? 0 : canvas.width;
+        y = Math.random() * canvas.height;
+    } else {
+        x = Math.random() * canvas.width;
+        y = Math.random() > 0.5 ? 0 : canvas.height;
+    }
+    
+    enemies.push({ ...type, x, y });
+}
+
+function updateUI() {
+    document.getElementById('health-bar').style.width = (player.health / player.maxHealth) * 100 + '%';
+    document.getElementById('prana-bar').style.width = (player.prana / player.maxPrana) * 100 + '%';
+}
 
 const avatars = {
     base: { color: '#c5c6c7', speed: 200, radius: 15 },
@@ -122,6 +155,82 @@ function update() {
     // Boundary check
     player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
     player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+    
+    // Combat (Shooting)
+    if (mouse.down && player.prana >= 1) {
+        const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+        projectiles.push({
+            x: player.x,
+            y: player.y,
+            vx: Math.cos(angle) * 400,
+            vy: Math.sin(angle) * 400,
+            radius: 5,
+            form: player.currentForm
+        });
+        player.prana -= 1;
+        updateUI();
+        mouse.down = false; // Simple semi-auto firing
+    }
+    
+    // Prana regen
+    if (player.prana < player.maxPrana) {
+        player.prana += 5 * deltaTime;
+        updateUI();
+    }
+    
+    // Update Projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.x += p.vx * deltaTime;
+        p.y += p.vy * deltaTime;
+        
+        // Remove off-screen projectiles
+        if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+            projectiles.splice(i, 1);
+        }
+    }
+    
+    // Update Enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        const ex = player.x - e.x;
+        const ey = player.y - e.y;
+        const dist = Math.sqrt(ex*ex + ey*ey);
+        
+        if (dist > 0) {
+            e.x += (ex/dist) * e.speed * deltaTime;
+            e.y += (ey/dist) * e.speed * deltaTime;
+        }
+        
+        // Player collision
+        if (dist < player.radius + e.radius) {
+            player.health -= e.damage * deltaTime;
+            updateUI();
+        }
+        
+        // Projectile collision
+        for (let j = projectiles.length - 1; j >= 0; j--) {
+            const p = projectiles[j];
+            const px = p.x - e.x;
+            const py = p.y - e.y;
+            const pdist = Math.sqrt(px*px + py*py);
+            
+            if (pdist < e.radius + p.radius) {
+                // Tactical matchup mechanic
+                let dmg = 10;
+                if (e.type === 'Mohini' && p.form === 'sun') dmg *= 2; // Sun counters Mohini
+                if (e.type === 'Mahasona' && p.form === 'earth') dmg *= 2; // Earth counters Mahasona
+                
+                e.hp -= dmg;
+                projectiles.splice(j, 1);
+                
+                if (e.hp <= 0) {
+                    enemies.splice(i, 1);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 function draw() {
@@ -164,7 +273,26 @@ function draw() {
     ctx.lineTo(player.x + Math.cos(angle) * 30, player.y + Math.sin(angle) * 30);
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.stroke();
+
+    // Draw projectiles
+    ctx.fillStyle = '#66fcf1';
+    projectiles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Draw enemies
+    enemies.forEach(e => {
+        ctx.fillStyle = e.type === 'Mohini' ? '#ffffff' : '#4a0000'; // White for Mohini, dark red for Mahasona
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ff0000';
+        ctx.stroke();
+    });
 }
 
 // Start game
+setInterval(spawnEnemy, 2000); // Spawn an enemy every 2 seconds
 requestAnimationFrame(gameLoop);
