@@ -1,170 +1,81 @@
+import * as THREE from 'three';
+import { Core3D } from './engine/Core3D.js';
 import { Input } from './engine/Input.js';
-import { Camera } from './engine/Camera.js';
-import { ParticleSystem } from './engine/ParticleSystem.js';
-import { AudioSystem } from './engine/Audio.js';
-import { Player, Projectile } from './entities/Player.js';
-import { LevelManager } from './world/LevelManager.js';
-import { UIManager } from './ui/UIManager.js';
 
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-let lastTime = 0;
 
 export const Game = {
-    ctx,
-    canvas,
-    worldSize: { w: 2000, h: 2000 },
-    deltaTime: 0,
-    particles: new ParticleSystem(),
-    camera: new Camera(),
-    input: new Input(canvas),
-    audio: new AudioSystem(),
-    ui: new UIManager(),
-    levelManager: new LevelManager(),
+    core: null,
+    input: null,
     player: null,
-    projectiles: [],
-    enemies: [],
-    coins: [],
-    obstacles: [],
+    clock: new THREE.Clock(),
     gameState: 'menu',
     
     init() {
-        window.addEventListener('resize', () => this.resize());
-        this.resize();
-        this.ui.init(this);
-        requestAnimationFrame((t) => this.loop(t));
-    },
-    
-    resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    },
-    
-    start() {
-        this.audio.init();
-        this.player = new Player(this.worldSize.w/2, this.worldSize.h/2);
-        this.projectiles = [];
-        this.enemies = [];
-        this.coins = [];
-        this.particles.clear();
-        this.levelManager.reset(this);
-        this.gameState = 'playing';
-        this.ui.showGame();
-    },
-    
-    gameOver() {
-        this.gameState = 'gameover';
-        this.ui.showGameOver(this.levelManager.currentLevel);
-    },
-    
-    loop(timestamp) {
-        this.deltaTime = Math.min((timestamp - lastTime) / 1000, 0.1);
-        lastTime = timestamp;
+        this.core = new Core3D(canvas);
+        this.input = new Input(canvas);
         
-        if(this.gameState === 'playing') {
-            this.update();
+        // Build Graveyard Arena
+        const groundGeo = new THREE.PlaneGeometry(200, 200);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x111a11, roughness: 0.9, metalness: 0.1 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        this.core.scene.add(ground);
+        
+        // Add some random tombstones
+        for(let i=0; i<50; i++) {
+            const size = 1 + Math.random()*2;
+            const tombGeo = new THREE.BoxGeometry(size, size*2, size*0.5);
+            const tombMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const tomb = new THREE.Mesh(tombGeo, tombMat);
+            tomb.position.set((Math.random()-0.5)*150, size, (Math.random()-0.5)*150);
+            tomb.castShadow = true;
+            tomb.receiveShadow = true;
+            this.core.scene.add(tomb);
         }
-        this.draw();
-        requestAnimationFrame((t) => this.loop(t));
-    },
-    
-    update() {
-        this.input.update(this.camera);
-        this.player.update(this);
-        this.camera.follow(this.player, this.canvas, this.deltaTime);
-        this.levelManager.update(this);
-        
-        // Update Projectiles
-        for (let i = this.projectiles.length - 1; i >= 0; i--) {
-            let p = this.projectiles[i];
-            p.update(this.deltaTime);
-            if (p.isDead(this.worldSize)) {
-                this.projectiles.splice(i, 1);
-                continue;
-            }
-            if (this.levelManager.checkProjectileCollision(p, this.obstacles)) {
-                this.particles.spawn(p.x, p.y, p.color, 5);
-                this.projectiles.splice(i, 1);
-            }
-        }
-        
-        // Update Coins
-        for (let i = this.coins.length - 1; i >= 0; i--) {
-            let c = this.coins[i];
-            if (Math.hypot(this.player.x - c.x, this.player.y - c.y) < this.player.radius + c.radius) {
-                this.coins.splice(i, 1);
-                this.levelManager.addCoin(this);
-            }
-        }
-        
-        // Update Enemies
-        for (let i = this.enemies.length - 1; i >= 0; i--) {
-            let e = this.enemies[i];
-            e.update(this);
-            if(e.hp <= 0) {
-                this.enemies.splice(i, 1);
-            }
-        }
-        
-        this.particles.update(this.deltaTime);
-        this.ui.updateHUD(this);
-    },
-    
-    draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.save();
-        this.ctx.translate(-this.camera.x, -this.camera.y);
-        
-        // Background
-        this.ctx.fillStyle = this.levelManager.isDesperation() ? '#1a0000' : '#0b0c10';
-        this.ctx.fillRect(0, 0, this.worldSize.w, this.worldSize.h);
-        
-        this.ctx.strokeStyle = '#1f2833'; this.ctx.lineWidth = 2;
-        for(let i=0; i<=this.worldSize.w; i+=100) { this.ctx.beginPath(); this.ctx.moveTo(i, 0); this.ctx.lineTo(i, this.worldSize.h); this.ctx.stroke(); }
-        for(let i=0; i<=this.worldSize.h; i+=100) { this.ctx.beginPath(); this.ctx.moveTo(0, i); this.ctx.lineTo(this.worldSize.w, i); this.ctx.stroke(); }
-        
-        if(this.gameState !== 'playing') { this.ctx.restore(); return; }
 
-        // Obstacles
-        this.obstacles.forEach(o => {
-            if(o.type === 'mud') {
-                const grad = this.ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
-                grad.addColorStop(0, 'rgba(40,25,10,0.8)'); grad.addColorStop(1, 'rgba(40,25,10,0)');
-                this.ctx.fillStyle = grad;
-                this.ctx.beginPath(); this.ctx.arc(o.x, o.y, o.r, 0, Math.PI*2); this.ctx.fill();
-            } else if(o.type === 'crypt') {
-                this.ctx.fillStyle = '#111'; this.ctx.strokeStyle = '#00f3ff'; this.ctx.lineWidth = 1;
-                this.ctx.shadowBlur = 15; this.ctx.shadowColor = '#00f3ff';
-                this.ctx.fillRect(o.x-o.w/2, o.y-o.h/2, o.w, o.h); 
-                this.ctx.strokeRect(o.x-o.w/2, o.y-o.h/2, o.w, o.h);
-                this.ctx.shadowBlur = 0;
-            }
-        });
-        
-        // Coins
-        this.coins.forEach(c => {
-            this.ctx.shadowBlur = 20; this.ctx.shadowColor = '#ffaa00';
-            this.ctx.fillStyle = '#ffaa00';
-            this.ctx.beginPath(); this.ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2); this.ctx.fill();
-            this.ctx.fillStyle = '#fff';
-            this.ctx.beginPath(); this.ctx.arc(c.x, c.y, c.radius*0.5, 0, Math.PI * 2); this.ctx.fill();
-            this.ctx.shadowBlur = 0;
+        // Temp Player Mesh
+        const playerGeo = new THREE.BoxGeometry(2, 4, 2);
+        const playerMat = new THREE.MeshStandardMaterial({ color: 0x00f3ff });
+        this.player = new THREE.Mesh(playerGeo, playerMat);
+        this.player.position.y = 2;
+        this.player.castShadow = true;
+        this.core.scene.add(this.player);
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.getElementById('menu-screen').classList.add('hidden');
+            this.gameState = 'playing';
         });
 
-        this.particles.draw(this.ctx);
-        this.projectiles.forEach(p => p.draw(this.ctx));
-        this.enemies.forEach(e => e.draw(this.ctx, this.player));
-        this.player.draw(this.ctx, this.input);
-        
-        // Ambient Lighting (Vignette)
-        const playerGrad = this.ctx.createRadialGradient(this.player.x, this.player.y, 100, this.player.x, this.player.y, 800);
-        playerGrad.addColorStop(0, 'rgba(0,0,0,0)');
-        playerGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
-        this.ctx.fillStyle = playerGrad;
-        this.ctx.fillRect(this.camera.x, this.camera.y, this.canvas.width, this.canvas.height);
+        this.loop();
+    },
 
-        this.ctx.restore();
+    loop() {
+        requestAnimationFrame(() => this.loop());
+        
+        const dt = this.clock.getDelta();
+        
+        if (this.gameState === 'playing') {
+            // Basic movement test
+            let dx = 0, dz = 0;
+            if(this.input.keys['KeyW']) dz -= 1;
+            if(this.input.keys['KeyS']) dz += 1;
+            if(this.input.keys['KeyA']) dx -= 1;
+            if(this.input.keys['KeyD']) dx += 1;
+            
+            if(dx !== 0 || dz !== 0) {
+                const len = Math.sqrt(dx*dx + dz*dz);
+                this.player.position.x += (dx/len) * 20 * dt;
+                this.player.position.z += (dz/len) * 20 * dt;
+            }
+            
+            this.core.updateCamera(this.player.position);
+            this.core.pointLight.position.copy(this.player.position);
+            this.core.pointLight.position.y += 2;
+        }
+
+        this.core.render();
     }
 };
 
