@@ -1,0 +1,120 @@
+:root {
+    --bg-color: #0b0c10;
+    --text-color: #c5c6c7;
+    --accent-color: #66fcf1;
+    --health-color: #ff4c4c;
+    --prana-color: #45a29e;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+#game-container {
+    position: relative;
+    width: 800px;
+    box-shadow: 0 0 20px rgba(102, 252, 241, 0.2);
+    border: 2px solid #1f2833;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+header {
+    text-align: center;
+    background-color: #1f2833;
+    padding: 10px;
+}
+
+header h1 {
+    margin: 0;
+    font-family: 'Cinzel', serif;
+    color: var(--accent-color);
+    font-size: 24px;
+}
+
+header p {
+    margin: 5px 0 0;
+    font-size: 12px;
+}
+
+canvas {
+    display: block;
+    background-color: #151a22; /* Dark fog look */
+    cursor: crosshair;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 70px;
+    left: 20px;
+    right: 20px;
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+}
+
+#health-bar-container, #prana-bar-container {
+    width: 200px;
+    height: 15px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #fff;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+#health-bar {
+    width: 100%;
+    height: 100%;
+    background-color: var(--health-color);
+    transition: width 0.2s;
+}
+
+#prana-bar {
+    width: 100%;
+    height: 100%;
+    background-color: var(--prana-color);
+    transition: width 0.2s;
+}
+
+#transformation-dial {
+    position: absolute;
+    bottom: 30px;
+    right: 20px;
+    background: rgba(31, 40, 51, 0.8);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--accent-color);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.dial-option {
+    padding: 5px 10px;
+    font-size: 12px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+
+.dial-option.active {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    text-shadow: 0 0 5px var(--accent-color);
+}
+
+#instructions {
+    background-color: #1f2833;
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+}
