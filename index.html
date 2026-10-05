@@ -3,55 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yaka: Seal of the Graveyard</title>
+    <title>Yaka: The Cursed Hour</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="game-container">
-        <header>
-            <h1>Yaka: The Cursed Hour</h1>
-            <p>Prototype - Graveyard Shift | <span id="level-display">Level: 1</span> | <span id="coin-display">Coins: 0/5</span></p>
-        </header>
+    <div id="game-wrapper">
+        <!-- Main Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
         
-        <!-- UI Overlay for Game -->
-        <div id="ui-layer" style="display: none;">
-            <div id="stats-container">
-                <div id="health-bar-container">
-                    <div id="health-bar"></div>
+        <!-- UI Layer -->
+        <div id="ui-layer" class="hidden">
+            <div class="top-bar">
+                <div class="stats-panel">
+                    <div class="bar-bg">
+                        <div id="health-bar" class="bar health"></div>
+                        <span class="bar-label">HP</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div id="prana-bar" class="bar prana"></div>
+                        <span class="bar-label">PRANA</span>
+                    </div>
                 </div>
-                <div id="prana-bar-container">
-                    <div id="prana-bar"></div>
+                <div class="objective-panel">
+                    <h2 id="level-display">Wave 1</h2>
+                    <p id="coin-display">Souls: 0 / 5</p>
                 </div>
             </div>
             
             <div id="transformation-dial">
-                <div class="dial-option active" id="avatar-base">Base (B)</div>
-                <div class="dial-option" id="avatar-sun">Sun-Flame (1)</div>
-                <div class="dial-option" id="avatar-earth">Earth-Breaker (2)</div>
-                <div class="dial-option" id="avatar-gale">Gale-Blade (3)</div>
-                <div class="dial-option" id="avatar-mystic">Mystic (4)</div>
+                <div class="dial-option active" id="avatar-base">
+                    <span class="key">B</span> Base Form
+                </div>
+                <div class="dial-option" id="avatar-sun">
+                    <span class="key">1</span> Sun-Flame
+                </div>
+                <div class="dial-option" id="avatar-earth">
+                    <span class="key">2</span> Earth-Breaker
+                </div>
+                <div class="dial-option" id="avatar-gale">
+                    <span class="key">3</span> Gale-Blade
+                </div>
+                <div class="dial-option" id="avatar-mystic">
+                    <span class="key">4</span> Mystic
+                </div>
+            </div>
+            
+            <div id="dash-indicator">
+                <span class="key">SPACE</span> Dash
             </div>
         </div>
 
         <!-- Screens -->
-        <div id="menu-screen" class="screen active">
-            <h2>Seal of the Graveyard</h2>
-            <p>Sri Lanka’s most feared graveyard spirits have been unleashed. Transform to exploit their weaknesses and collect souls (coins) to cleanse the graveyard.</p>
-            <button id="start-btn">Start Purge</button>
+        <div id="menu-screen" class="screen">
+            <div class="screen-content">
+                <h1 class="title">YAKA</h1>
+                <h2 class="subtitle">The Cursed Hour</h2>
+                <div class="lore-box">
+                    <p>The boundary between realms has shattered. Use the ancient Yantra Bandhana to transform into ancestral warrior-avatars.</p>
+                </div>
+                <button id="start-btn" class="btn primary">Initiate Purge</button>
+                <p class="controls-hint">WASD to Move | Mouse to Aim & Shoot | 1-4 to Transform | SPACE to Dash</p>
+            </div>
         </div>
         
-        <div id="game-over-screen" class="screen">
-            <h2>You Have Been Consumed</h2>
-            <p id="final-score">You reached Level X</p>
-            <button id="restart-btn">Try Again</button>
+        <div id="game-over-screen" class="screen hidden">
+            <div class="screen-content">
+                <h1 class="title death-title">CONSUMED</h1>
+                <p id="final-score" class="score-text">You survived until Wave X</p>
+                <button id="restart-btn" class="btn primary">Resurrect</button>
+            </div>
         </div>
-
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
         
-        <div id="instructions">
-            <p><strong>Controls:</strong> WASD to move | Mouse to aim | Left Click to Attack | 1-4 to Transform | B for Base</p>
-        </div>
+        <!-- Screen Flash Overlay -->
+        <div id="flash-overlay"></div>
     </div>
 
     <script src="game.js"></script>
