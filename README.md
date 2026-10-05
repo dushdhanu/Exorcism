@@ -35,3 +35,9 @@ Players activate their wrist relic to transform in real time. Each form matches 
 * **Relic Transformation System (Dial-Swap):** Real-time transformation wheel with an energy meter (Prana). Swapping mid-combo allows fluid aerial-to-ground chain attacks.
 * **"Desperation Climax" (Grave Convergence):** At designated wave peaks or low health thresholds, all lingering ghosts converge in a chaotic multi-boss assault. Players must rapidly cycle through multiple transformations mid-fight—using the wind form to dodge Kalu Kumaraya while using solar pulses to keep Mohini at bay and heavy armor to tank Mahasona’s ground slams.
 * **Interactive Graveyard Environment:** Breakable crypts, ancient bell towers to ring for stun waves, sacred bo-tree shrines for recharging stamina, and mud pits that slow down movement.
+
+## 4. Game Modes
+
+* **Graveyard Siege (Horde / Survival Mode):** Defend a central consecrated shrine inside the graveyard across midnight waves, culminating in the desperate all-boss clash.
+* **Story Campaign (Exorcist Chronicles):** Level-by-level mystery starting in a rural colonial cemetery and expanding into ancient temple ruins and desolate crossroads.
+* **Possession Tag (Co-Op / Dual Swap):** Single-player switch mechanic (swap between the boy and girl on the fly) or 2-player local/online co-op where both players coordinate different transformations against dual threats.
