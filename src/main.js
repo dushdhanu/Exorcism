@@ -57,11 +57,18 @@ export const Game = {
         
         // Arena
         const groundGeo = new THREE.PlaneGeometry(300, 300);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x0a110a, roughness: 0.8 });
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x334433, roughness: 0.8 });
         const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         this.core.scene.add(ground);
+        
+        // Grid Helper
+        const grid = new THREE.GridHelper(300, 100, 0x000000, 0x000000);
+        grid.material.opacity = 0.2;
+        grid.material.transparent = true;
+        grid.position.y = 0.1;
+        this.core.scene.add(grid);
         
         // Tombstones
         for(let i=0; i<80; i++) {
@@ -171,20 +178,27 @@ export const Game = {
         this.gameState = 'playing';
         this.timeRemaining = this.maxTime;
         this.player.userData.hp = this.player.userData.maxHp;
+        this.player.userData.facingDir = new THREE.Vector3(0, 0, 1);
         
         // Clean up old enemies
         this.enemies.forEach(e => this.core.scene.remove(e));
         this.enemies = [];
+        this.spawnTimer = 0;
         
         // Update UI
-        this.levelDisplay.innerText = "Level " + this.currentLevel;
-        
-        this.spawnWave();
+        this.levelDisplay.innerText = "Wave " + this.currentLevel;
     },
     
-    spawnWave() {
+    spawnEnemy() {
         const data = this.levelData[this.currentLevel - 1];
-        this.createDemon(data.demon, data.color, 0, -20, 15, data.hp, data.shape);
+        // Spawn randomly around the arena
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 30 + Math.random() * 20;
+        const ex = this.player.position.x + Math.cos(angle) * dist;
+        const ez = this.player.position.z + Math.sin(angle) * dist;
+        
+        // Weaker HP for horde mode
+        this.createDemon(data.demon, data.color, ex, ez, data.shape === 'titan' ? 10 : 20, data.hp / 2, data.shape);
     },
 
     createDemon(name, color, x, z, speed, hp, shape) {
@@ -359,8 +373,15 @@ export const Game = {
 
         if(dx !== 0 || dz !== 0) {
             const len = Math.sqrt(dx*dx + dz*dz);
-            this.player.position.x += (dx/len) * moveSpeed * dt;
-            this.player.position.z += (dz/len) * moveSpeed * dt;
+            const moveX = (dx/len) * moveSpeed * dt;
+            const moveZ = (dz/len) * moveSpeed * dt;
+            this.player.position.x += moveX;
+            this.player.position.z += moveZ;
+            
+            // Rotate player to face movement direction
+            u.facingDir.set(dx, 0, dz).normalize();
+            const targetPos = this.player.position.clone().add(u.facingDir);
+            this.player.lookAt(targetPos);
             
             if (this.mixer && this.currentAction !== this.actionRun) {
                 this.actionRun.reset().fadeIn(0.2).play();
@@ -375,15 +396,7 @@ export const Game = {
             }
         }
 
-        // Aiming (Mouse Raycast)
-        this.raycaster.setFromCamera(
-            new THREE.Vector2((this.input.mouse.x / window.innerWidth) * 2 - 1, -(this.input.mouse.y / window.innerHeight) * 2 + 1),
-            this.core.camera
-        );
-        const target = new THREE.Vector3();
-        this.raycaster.ray.intersectPlane(this.mousePlane, target);
-        this.player.lookAt(target.x, this.player.position.y, target.z);
-
+        // Aiming is now handled by WASD direction, no mouse raycast needed for keyboard brawler
         // Prana regen
         if(u.prana < u.maxPrana) u.prana += 10 * dt;
     },
@@ -398,11 +411,11 @@ export const Game = {
             u.prana -= 5;
             u.attackTimer = avatar.cd;
             
-            // Aim direction
-            const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.player.quaternion).normalize();
+            // Aim direction uses facing direction
+            const dir = u.facingDir.clone();
             
-            // Attack Animation (Swing arm)
-            this.playerArm.rotation.x = -Math.PI / 2;
+            // Attack Animation (if missing arm, it just ignores)
+            if (this.playerArm) this.playerArm.rotation.x = -Math.PI / 2;
             
             if (avatar.type === 'range') {
                 const proj = new THREE.Mesh(new THREE.TorusGeometry(1, 0.2, 8, 16), new THREE.MeshBasicMaterial({color: avatar.color}));
@@ -483,9 +496,6 @@ export const Game = {
             this.core.scene.remove(enemy);
             this.enemies = this.enemies.filter(e => e !== enemy);
             this.createParticle(pos, 0xffffff, 40);
-            
-            this.gameState = 'win';
-            document.getElementById('next-level-screen').classList.remove('hidden');
         }
     },
 
@@ -495,6 +505,15 @@ export const Game = {
     },
 
     updateEnemies(dt) {
+        // Continuous Horde Spawning
+        if (this.enemies.length < 15) { // Max 15 enemies on screen
+            this.spawnTimer -= dt;
+            if (this.spawnTimer <= 0) {
+                this.spawnEnemy();
+                this.spawnTimer = 2.0; // spawn a new enemy every 2 seconds
+            }
+        }
+
         this.enemies.forEach(enemy => {
             const u = enemy.userData;
             u.stateTimer += dt;
