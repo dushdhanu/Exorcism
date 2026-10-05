@@ -100,6 +100,7 @@ export const Game = {
             const model = gltf.scene;
             model.scale.set(3.0, 3.0, 3.0); // Make him bigger so he is clearly visible
             model.position.y = 0;
+            model.rotation.y = Math.PI; // Flip 180 degrees so he faces the right way
             
             // Find materials to tint
             this.playerMaterials = [];
