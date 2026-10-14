@@ -22,6 +22,12 @@ export class Player3D {
         this.walkCycle = 0;
         this.isMoving = false;
 
+        // Anuradhapura Awakening (Desperation Super-State)
+        this.isAwakened = false;
+        this.awakeningTimer = 0;
+        this.awakeningDuration = 12.0;
+        this.awakeningCooldown = 0;
+
         // Avatar specifications
         this.avatarData = {
             'Digit1': {

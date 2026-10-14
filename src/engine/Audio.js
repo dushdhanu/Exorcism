@@ -179,17 +179,42 @@ export class AudioSystem {
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
             osc.connect(gain); gain.connect(this.ctx.destination);
             osc.start(now); osc.stop(now + 0.45);
-        } else if (type === 'parry') {
-            // Crisp metal clang
-            const osc = this.ctx.createOscillator();
+        } else if (type === 'thunder') {
+            // Rolling deep thunder clap
+            const bufferSize = this.ctx.sampleRate * 1.5;
+            const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.45));
+            }
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = noiseBuffer;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(250, now);
+            filter.frequency.exponentialRampToValueAtTime(60, now + 1.4);
             const gain = this.ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(1400, now);
-            osc.frequency.exponentialRampToValueAtTime(800, now + 0.25);
-            gain.gain.setValueAtTime(0.25, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            osc.start(now); osc.stop(now + 0.3);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ctx.destination);
+            noise.start(now);
+        } else if (type === 'awakening') {
+            // Divine celestial awakening chime
+            [329.63, 440.00, 554.37, 659.25, 880.00].forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2 + idx * 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now + idx * 0.08);
+                osc.stop(now + 1.3 + idx * 0.08);
+            });
+            this.playDrum(45, 0.8);
         }
     }
 

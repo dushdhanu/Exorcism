@@ -8,6 +8,12 @@ export class Environment3D {
         this.mistSystem = null;
         this.obstacles = []; // Collision bounding boxes/spheres
         
+        // Lightning system
+        this.lightningTimer = 8 + Math.random() * 10;
+        this.lightningLight = new THREE.DirectionalLight(0xddeeff, 0);
+        this.lightningLight.position.set(10, 80, 10);
+        this.scene.add(this.lightningLight);
+
         this.buildGround();
         this.buildRain();
         this.buildMist();
@@ -535,6 +541,20 @@ export class Environment3D {
             if (m.position.z > 100) m.position.z = -100;
             if (m.position.z < -100) m.position.z = 100;
         });
+
+        // Atmospheric Lightning Flashes
+        if (this.lightningTimer > 0) {
+            this.lightningTimer -= dt;
+            if (this.lightningTimer <= 0) {
+                // Trigger flash
+                this.lightningLight.intensity = 5.0;
+                this.lightningTimer = 12 + Math.random() * 15;
+                if (this.onLightning) this.onLightning();
+            }
+        }
+        if (this.lightningLight.intensity > 0) {
+            this.lightningLight.intensity = Math.max(0, this.lightningLight.intensity - 12 * dt);
+        }
     }
 
     checkCollision(x, z, radius) {
