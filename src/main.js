@@ -64,6 +64,15 @@ export const Game = {
         this.env = new Environment3D(this.core.scene);
         this.fx = new FXSystem3D(this.core.scene);
         this.player = new Player3D(this.core.scene);
+        this.radarCanvas = document.getElementById('radar-canvas');
+        this.radarCtx = this.radarCanvas ? this.radarCanvas.getContext('2d') : null;
+        this.awakeningBanner = document.getElementById('awakening-banner');
+
+        // Connect ambient lightning sound and camera jolt
+        this.env.onLightning = () => {
+            this.audio.play('thunder');
+            this.core.shake(0.25, 0.7);
+        };
 
         this.bindEvents();
         this.updateAvatarUI();
@@ -269,16 +278,30 @@ export const Game = {
         const curAvatar = this.player.currentAvatar;
         const data = this.player.avatarData[curAvatar];
 
+        // Check Manual Awakening Trigger (Key R)
+        if (this.input.keys['KeyR'] && this.player.prana >= 70 && !this.player.isAwakened && this.player.awakeningCooldown <= 0) {
+            this.player.prana -= 70;
+            this.activateAwakening();
+        }
+
         // 1. Primary Attack (Left click or J key)
         const isAttacking = (this.input.mouse.down || this.input.keys['KeyJ']);
         if (isAttacking && this.player.attackTimer <= 0 && this.player.prana >= 4) {
-            this.player.attackTimer = data.attackCd;
+            this.player.attackTimer = this.player.isAwakened ? 0.12 : data.attackCd;
             this.player.prana -= 4;
             this.player.triggerAttackAnimation();
 
             const aimDir = this.getAimDirection();
 
-            if (curAvatar === 'Digit1') {
+            if (this.player.isAwakened) {
+                // ANURADHAPURA AWAKENING: Fused 4-Avatar Cataclysmic Barrage!
+                this.audio.play('shoot_chakram');
+                this.audio.play('wind_slash');
+                this.fx.spawnChakram(this.player.position, aimDir, data.dmg * 2.0);
+                this.fx.spawnWindSlash(this.player.position, aimDir, data.dmg * 1.5);
+                this.fx.spawnFlameJet(this.player.position, aimDir, data.dmg);
+                this.core.shake(0.2, 0.8);
+            } else if (curAvatar === 'Digit1') {
                 // Suriya Divya: Throw burning Solar Chakram
                 this.fx.spawnChakram(this.player.position, aimDir, data.dmg);
                 this.audio.play('shoot_chakram');
@@ -555,20 +578,45 @@ export const Game = {
         });
     },
 
+    activateAwakening() {
+        this.player.triggerAwakening();
+        this.audio.play('awakening');
+        this.core.shake(0.5, 2.2);
+        this.fx.spawnSparks(this.player.position, 0xffcc00, 45);
+
+        // Flash gold
+        this.ui.flashOverlay.style.background = 'rgba(255, 204, 0, 0.7)';
+        this.ui.flashOverlay.style.opacity = '1';
+        setTimeout(() => { this.ui.flashOverlay.style.opacity = '0'; }, 200);
+
+        // Show popup banner
+        if (this.awakeningBanner) {
+            this.awakeningBanner.classList.remove('hidden');
+            setTimeout(() => {
+                if (this.awakeningBanner) this.awakeningBanner.classList.add('hidden');
+            }, 2400);
+        }
+    },
+
     damagePlayer(amount) {
         if (this.player.isDashing) return; // Invincible during dash!
-        const isDead = this.player.damage(amount);
+        const res = this.player.damage(amount);
         this.audio.play('hit');
         this.core.shake(0.3, 1.0);
         this.comboCount = 0;
         this.ui.comboContainer.classList.add('hidden');
+
+        // Check if dropping below 25% HP triggered Anuradhapura Awakening!
+        if (res.triggeredAwakening) {
+            this.activateAwakening();
+        }
 
         // Red screen damage flash
         this.ui.flashOverlay.style.background = 'rgba(255, 0, 0, 0.4)';
         this.ui.flashOverlay.style.opacity = '1';
         setTimeout(() => { this.ui.flashOverlay.style.opacity = '0'; }, 120);
 
-        if (isDead) {
+        if (res.isDead) {
             this.triggerGameOver();
         }
     },
@@ -644,6 +692,75 @@ export const Game = {
                 this.ui.comboContainer.classList.add('hidden');
             }
         }
+
+        // Draw Minimap
+        this.drawRadar();
+    },
+
+    drawRadar() {
+        if (!this.radarCtx) return;
+        const ctx = this.radarCtx;
+        const size = 110;
+        const center = size / 2;
+        const scale = (center - 10) / 120; // 120 world radius mapped
+
+        ctx.clearRect(0, 0, size, size);
+
+        // Circular background
+        ctx.fillStyle = 'rgba(7, 10, 16, 0.88)';
+        ctx.beginPath();
+        ctx.arc(center, center, center - 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rings
+        ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(center, center, (center - 10) * 0.5, 0, Math.PI * 2);
+        ctx.arc(center, center, center - 10, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Stupa marker at (0, -35)
+        const stupaRx = center + 0 * scale;
+        const stupaRy = center + (-35) * scale;
+        ctx.fillStyle = '#ffaa00';
+        ctx.beginPath();
+        ctx.arc(stupaRx, stupaRy, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Boss Blip
+        if (this.boss) {
+            const bx = center + this.boss.position.x * scale;
+            const by = center + this.boss.position.z * scale;
+            ctx.fillStyle = '#ff1133';
+            ctx.shadowColor = '#ff1133';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(bx, by, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        // Minions Blips
+        ctx.fillStyle = '#ff5555';
+        this.minions.forEach(m => {
+            const mx = center + m.position.x * scale;
+            const my = center + m.position.z * scale;
+            ctx.beginPath();
+            ctx.arc(mx, my, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Player Icon
+        const px = center + this.player.position.x * scale;
+        const py = center + this.player.position.z * scale;
+        ctx.fillStyle = this.player.isAwakened ? '#ffffff' : '#00f3ff';
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
     }
 };
 
