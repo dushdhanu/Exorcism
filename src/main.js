@@ -1,502 +1,595 @@
 import * as THREE from 'three';
 import { Core3D } from './engine/Core3D.js';
 import { Input } from './engine/Input.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { AudioSystem } from './engine/Audio.js';
+import { Environment3D } from './world/Environment3D.js';
+import { Player3D } from './entities/Player3D.js';
+import { Boss3D } from './entities/Bosses3D.js';
+import { FXSystem3D } from './engine/FXSystem3D.js';
 
 const canvas = document.getElementById('gameCanvas');
 
 export const Game = {
     core: null,
     input: null,
+    audio: null,
+    env: null,
     player: null,
-    playerBody: null,
-    enemies: [],
-    projectiles: [],
-    enemyProjectiles: [], // for Giri Yaka poison
-    aoeZones: [], // for Mahasona slam
-    particles: [],
-    damageTexts: [],
+    fx: null,
+    boss: null,
+    minions: [],
     clock: new THREE.Clock(),
-    gameState: 'menu',
-    
-    // Level System
-    currentLevel: 1,
-    timeRemaining: 60,
-    maxTime: 60,
-    levelData: [
-        { demon: 'Mohini', color: 0xffffff, shape: 'ghost', hp: 100 },
-        { demon: 'Mahasona', color: 0xff0000, shape: 'titan', hp: 200 },
-        { demon: 'Kalu Kumaraya', color: 0x330033, shape: 'shadow', hp: 300 },
-        { demon: 'Giri Yaka', color: 0x00ff00, shape: 'blob', hp: 400 }
+    gameState: 'menu', // 'menu', 'playing', 'gameover', 'levelclear', 'victory'
+
+    // Wave & Progression
+    currentWave: 1,
+    maxWaves: 4,
+    timeRemaining: 75,
+    maxTime: 75,
+    comboCount: 0,
+    comboTimer: 0,
+
+    // Boss Data per wave
+    waveData: [
+        { name: 'MOHINI', subtitle: 'THE ETHEREAL SIREN', demonType: 'Mohini' },
+        { name: 'MAHASONA', subtitle: 'THE CEMETERY GIANT', demonType: 'Mahasona' },
+        { name: 'KALU KUMARAYA', subtitle: 'THE SHADOW PRINCE', demonType: 'Kalu Kumaraya' },
+        { name: 'GIRI YAKA', subtitle: 'THE AFFLICTION DEMON', demonType: 'Giri Yaka' }
     ],
-    
-    // Camera Shake
-    shakeTime: 0,
-    shakeIntensity: 0,
-    
-    // UI Elements
-    healthBar: document.getElementById('health-bar'),
-    pranaBar: document.getElementById('prana-bar'),
-    timerDisplay: document.getElementById('timer-display'),
-    levelDisplay: document.getElementById('level-display'),
-    
-    // Avatar Stats
-    avatars: {
-        'Digit1': { name: 'Suriya Divya', color: 0xffaa00, speed: 30, type: 'range', cd: 0.3 },
-        'Digit2': { name: 'Maha Gaja', color: 0x555555, speed: 15, type: 'melee_heavy', cd: 1.0 },
-        'Digit3': { name: 'Vayu Yodheya', color: 0x00ffcc, speed: 45, type: 'melee_fast', cd: 0.2 },
-        'Digit4': { name: 'Shanthikarma', color: 0xdd88ff, speed: 25, type: 'flamethrower', cd: 0.1 }
+
+    // UI Cache
+    ui: {
+        healthBar: document.getElementById('health-bar'),
+        healthNum: document.getElementById('health-num'),
+        pranaBar: document.getElementById('prana-bar'),
+        pranaNum: document.getElementById('prana-num'),
+        bossHud: document.getElementById('boss-hud'),
+        bossName: document.getElementById('boss-name'),
+        bossSub: document.getElementById('boss-sub'),
+        bossHealthBar: document.getElementById('boss-health-bar'),
+        levelDisplay: document.getElementById('level-display'),
+        timerDisplay: document.getElementById('timer-display'),
+        comboContainer: document.getElementById('combo-container'),
+        comboCount: document.getElementById('combo-count'),
+        primaryName: document.getElementById('current-primary-name'),
+        specialName: document.getElementById('current-special-name'),
+        specialCdOverlay: document.getElementById('special-cd-overlay'),
+        flashOverlay: document.getElementById('flash-overlay')
     },
-    
+
     init() {
         this.core = new Core3D(canvas);
         this.input = new Input(canvas);
-        
-        // Adjust camera for isometric brawler feel
-        this.core.cameraOffset = new THREE.Vector3(0, 30, 25);
-        
-        // Arena
-        const groundGeo = new THREE.PlaneGeometry(300, 300);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x334433, roughness: 0.8 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        this.core.scene.add(ground);
-        
-        // Grid Helper
-        const grid = new THREE.GridHelper(300, 100, 0x000000, 0x000000);
-        grid.material.opacity = 0.2;
-        grid.material.transparent = true;
-        grid.position.y = 0.1;
-        this.core.scene.add(grid);
-        
-        // Tombstones
-        for(let i=0; i<80; i++) {
-            const h = 2 + Math.random()*3;
-            const tomb = new THREE.Mesh(
-                new THREE.BoxGeometry(2, h, 1),
-                new THREE.MeshStandardMaterial({ color: 0x222222 })
-            );
-            tomb.position.set((Math.random()-0.5)*250, h/2, (Math.random()-0.5)*250);
-            tomb.castShadow = true; tomb.receiveShadow = true;
-            this.core.scene.add(tomb);
-        }
+        this.audio = new AudioSystem();
+        this.env = new Environment3D(this.core.scene);
+        this.fx = new FXSystem3D(this.core.scene);
+        this.player = new Player3D(this.core.scene);
 
-        // Build Player Group
-        this.player = new THREE.Group();
-        this.player.position.y = 0;
-        
-        // Placeholder Body (until GLTF loads)
-        this.playerBody = new THREE.Mesh(
-            new THREE.BoxGeometry(2, 3, 2),
-            new THREE.MeshStandardMaterial({ color: 0xffaa00 })
-        );
-        this.playerBody.position.y = 1.5;
-        this.player.add(this.playerBody);
-        
-        // Load Human GLTF Model
-        const loader = new GLTFLoader();
-        loader.load('/models/Soldier.glb', (gltf) => {
-            const model = gltf.scene;
-            model.scale.set(3.0, 3.0, 3.0); // Make him bigger so he is clearly visible
-            model.position.y = 0;
-            model.rotation.y = Math.PI; // Flip 180 degrees so he faces the right way
-            
-            // Find materials to tint
-            this.playerMaterials = [];
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.material = child.material.clone();
-                    this.playerMaterials.push(child.material);
-                }
-            });
+        this.bindEvents();
+        this.updateAvatarUI();
 
-            this.playerModel = model;
-            this.player.remove(this.playerBody);
-            this.player.add(model);
-            
-            // Add a personal light so the player is always brightly lit
-            const personalLight = new THREE.PointLight(0xffffff, 2, 20);
-            personalLight.position.set(0, 5, 2);
-            this.player.add(personalLight);
-            
-            // Animations
-            this.mixer = new THREE.AnimationMixer(model);
-            this.actionIdle = this.mixer.clipAction(gltf.animations.find(a => a.name === 'Idle'));
-            this.actionRun = this.mixer.clipAction(gltf.animations.find(a => a.name === 'Run'));
-            this.actionIdle.play();
-            this.currentAction = this.actionIdle;
-        });
-
-        this.player.userData = { 
-            speed: 30, dashTimer: 0, hp: 100, maxHp: 100, 
-            prana: 100, maxPrana: 100, attackTimer: 0, currentAvatar: 'Digit1'
-        };
-        this.core.scene.add(this.player);
-
-        // Raycaster for mouse aiming
-        this.raycaster = new THREE.Raycaster();
-        this.mousePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-
-        document.getElementById('start-btn').addEventListener('click', () => {
-            document.getElementById('menu-screen').classList.add('hidden');
-            document.getElementById('ui-layer').classList.remove('hidden');
-            this.startLevel();
-        });
-        
-        document.getElementById('restart-btn').addEventListener('click', () => {
-            document.getElementById('game-over-screen').classList.add('hidden');
-            this.startLevel(); // Retry same level
-        });
-
-        document.getElementById('next-level-btn').addEventListener('click', () => {
-            document.getElementById('next-level-screen').classList.add('hidden');
-            this.currentLevel++;
-            if (this.currentLevel > this.levelData.length) {
-                this.currentLevel = 1; // loop back or show ultimate win screen
-            }
-            this.startLevel();
-        });
-
-        // Click listeners for Avatar UI
-        const avatarMap = {
-            'avatar-sun': 'Digit1',
-            'avatar-earth': 'Digit2',
-            'avatar-gale': 'Digit3',
-            'avatar-mystic': 'Digit4'
-        };
-        Object.keys(avatarMap).forEach(id => {
-            document.getElementById(id).addEventListener('click', () => {
-                this.swapAvatar(avatarMap[id]);
-            });
-        });
-
+        // Start render loop
         this.loop();
     },
-    
-    startLevel() {
+
+    bindEvents() {
+        // Start button
+        document.getElementById('start-btn').addEventListener('click', () => {
+            this.audio.init();
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('ui-layer').classList.remove('hidden');
+            this.startWave(1);
+        });
+
+        // Restart button
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            document.getElementById('game-over-screen').classList.add('hidden');
+            this.startWave(this.currentWave);
+        });
+
+        // Next level button
+        document.getElementById('next-level-btn').addEventListener('click', () => {
+            document.getElementById('next-level-screen').classList.add('hidden');
+            if (this.currentWave < this.maxWaves) {
+                this.startWave(this.currentWave + 1);
+            } else {
+                this.triggerVictory();
+            }
+        });
+
+        // Victory restart
+        document.getElementById('victory-restart-btn').addEventListener('click', () => {
+            document.getElementById('victory-screen').classList.add('hidden');
+            this.startWave(1);
+        });
+
+        // Audio toggle button
+        const audioBtn = document.getElementById('audio-toggle-btn');
+        audioBtn.addEventListener('click', () => {
+            this.audio.init();
+            const muted = this.audio.toggleMute();
+            audioBtn.innerText = muted ? '🔇 Muted' : '🔊 Sound';
+        });
+
+        // Clickable Avatar Dial items
+        document.querySelectorAll('.dial-option').forEach(el => {
+            el.addEventListener('click', () => {
+                const key = el.getAttribute('data-key');
+                if (key && this.player.currentAvatar !== key) {
+                    this.player.setAvatar(key);
+                    this.audio.play('transform');
+                    this.core.shake(0.2, 0.4);
+                    this.fx.spawnSparks(this.player.position, this.player.avatarData[key].color, 25);
+                    this.updateAvatarUI();
+                }
+            });
+        });
+    },
+
+    startWave(waveNum) {
+        this.currentWave = waveNum;
         this.gameState = 'playing';
         this.timeRemaining = this.maxTime;
-        this.player.userData.hp = this.player.userData.maxHp;
-        this.player.userData.facingDir = new THREE.Vector3(0, 0, 1);
-        
-        // Clean up old enemies
-        this.enemies.forEach(e => this.core.scene.remove(e));
-        this.enemies = [];
-        this.spawnTimer = 0;
-        
-        // Update UI
-        this.levelDisplay.innerText = "Wave " + this.currentLevel;
-    },
-    
-    spawnEnemy() {
-        const data = this.levelData[this.currentLevel - 1];
-        // Spawn randomly around the arena
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 30 + Math.random() * 20;
-        const ex = this.player.position.x + Math.cos(angle) * dist;
-        const ez = this.player.position.z + Math.sin(angle) * dist;
-        
-        // Weaker HP for horde mode
-        this.createDemon(data.demon, data.color, ex, ez, data.shape === 'titan' ? 10 : 20, data.hp / 2, data.shape);
-    },
+        this.comboCount = 0;
 
-    createDemon(name, color, x, z, speed, hp, shape) {
-        const demon = new THREE.Group();
-        demon.position.set(x, 2, z);
-        
-        let mesh;
-        if(shape === 'ghost') {
-            // Make Mohini clearly visible and bright white
-            mesh = new THREE.Mesh(new THREE.ConeGeometry(1.5, 4, 16), new THREE.MeshStandardMaterial({ color, emissive: 0xffffff, emissiveIntensity: 0.8, transparent: true, opacity: 0.9 }));
-            mesh.position.y = 1;
-        } else if (shape === 'titan') {
-            mesh = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 4), new THREE.MeshStandardMaterial({ color }));
-            mesh.position.y = 1;
-        } else if (shape === 'blob') {
-            mesh = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16), new THREE.MeshStandardMaterial({ color }));
-        } else {
-            mesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 3), new THREE.MeshStandardMaterial({ color }));
+        // Reset player
+        this.player.hp = this.player.maxHp;
+        this.player.prana = this.player.maxPrana;
+        this.player.position.set(0, 0, 0);
+
+        // Remove old boss and minions
+        if (this.boss) {
+            this.core.scene.remove(this.boss.group);
+            this.boss = null;
         }
-        
-        mesh.castShadow = true;
-        demon.add(mesh);
-        
-        // Eyes (Keep glowing red eyes for gameplay clarity)
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.2), eyeMat);
-        eye1.position.set(0.5, shape==='titan'?2:1, 1.5);
-        const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.2), eyeMat);
-        eye2.position.set(-0.5, shape==='titan'?2:1, 1.5);
-        demon.add(eye1); demon.add(eye2);
+        this.minions.forEach(m => this.core.scene.remove(m.group));
+        this.minions = [];
 
-        demon.userData = { name, speed, hp, maxHp: hp, shape, stateTimer: 0 };
-        this.core.scene.add(demon);
-        this.enemies.push(demon);
+        // Spawn Boss for this wave
+        const wave = this.waveData[waveNum - 1];
+        this.boss = new Boss3D(this.core.scene, wave.demonType, waveNum);
+        this.boss.position.set(0, 0, 32);
+
+        // Spawn a couple of minions
+        this.spawnMinions(3 + waveNum);
+
+        // Update Boss HUD
+        this.ui.bossName.innerText = wave.name;
+        this.ui.bossSub.innerText = wave.subtitle;
+        this.ui.bossHud.classList.remove('hidden');
+        this.ui.levelDisplay.innerText = `Wave ${waveNum}`;
+
+        this.audio.play('demon_roar');
+        this.audio.playDrum(55, 0.5);
     },
 
-    createParticle(pos, color, count=10) {
-        for(let i=0; i<count; i++) {
-            const mesh = new THREE.Mesh(
-                new THREE.BoxGeometry(0.5, 0.5, 0.5),
-                new THREE.MeshBasicMaterial({ color })
-            );
-            mesh.position.copy(pos);
+    spawnMinions(count) {
+        const ghoulMat = new THREE.MeshStandardMaterial({ color: 0x223322, roughness: 0.8 });
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+
+        for (let i = 0; i < count; i++) {
+            const group = new THREE.Group();
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 10;
-            const vy = Math.random() * 10;
-            mesh.userData = { vx: Math.cos(angle)*speed, vy: vy, vz: Math.sin(angle)*speed, life: 1.0 };
-            this.core.scene.add(mesh);
-            this.particles.push(mesh);
+            const dist = 18 + Math.random() * 25;
+            group.position.set(Math.cos(angle) * dist, 0.8, Math.sin(angle) * dist);
+
+            // Small cemetery ghoul
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.2, 0.8), ghoulMat);
+            body.position.y = 0.6;
+            body.castShadow = true;
+            group.add(body);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), ghoulMat);
+            head.position.y = 1.4;
+            group.add(head);
+
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08), eyeMat);
+            eye.position.set(0, 1.45, 0.3);
+            group.add(eye);
+
+            group.userData = {
+                hp: 35,
+                maxHp: 35,
+                speed: 13 + Math.random() * 4,
+                dmg: 8,
+                attackTimer: 0
+            };
+
+            this.core.scene.add(group);
+            this.minions.push(group);
         }
     },
 
-    createDamageText(pos, amount, color=0xffffff) {
-        // Simple 3D text using a sprite canvas
-        const canvas = document.createElement('canvas');
-        canvas.width = 128; canvas.height = 64;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
-        ctx.font = 'bold 40px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(amount.toString(), 64, 48);
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 3;
-        ctx.strokeText(amount.toString(), 64, 48);
-        
-        const tex = new THREE.CanvasTexture(canvas);
-        const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-        const sprite = new THREE.Sprite(spriteMat);
-        sprite.position.copy(pos);
-        sprite.position.y += 3;
-        sprite.scale.set(4, 2, 1);
-        sprite.userData = { life: 1.0, vy: 5 };
-        this.core.scene.add(sprite);
-        this.damageTexts.push(sprite);
+    updateAvatarUI() {
+        const curKey = this.player.currentAvatar;
+        const data = this.player.avatarData[curKey];
+
+        // Update active class on dial
+        document.querySelectorAll('.dial-option').forEach(el => {
+            if (el.getAttribute('data-key') === curKey) {
+                el.classList.add('active');
+            } else {
+                el.classList.remove('active');
+            }
+        });
+
+        // Update quickbar ability names
+        if (curKey === 'Digit1') {
+            this.ui.primaryName.innerText = 'Solar Chakram';
+            this.ui.specialName.innerText = 'Maha Surya Flare';
+        } else if (curKey === 'Digit2') {
+            this.ui.primaryName.innerText = 'Granite Smash';
+            this.ui.specialName.innerText = 'Quake Shatter';
+        } else if (curKey === 'Digit3') {
+            this.ui.primaryName.innerText = 'Flurry Slashes';
+            this.ui.specialName.innerText = 'Breeze-Step Dash';
+        } else if (curKey === 'Digit4') {
+            this.ui.primaryName.innerText = 'Pandama Flame';
+            this.ui.specialName.innerText = 'Kovil Mandala';
+        }
     },
 
     loop() {
         requestAnimationFrame(() => this.loop());
-        const dt = this.clock.getDelta();
-        
+        const dt = Math.min(this.clock.getDelta(), 0.1);
+
         if (this.gameState === 'playing') {
+            this.input.update(this.core.camera);
             this.updatePlayer(dt);
             this.updateCombat(dt);
-            this.updateEnemies(dt);
-            this.updateParticles(dt);
-            this.updateDamageTexts(dt);
-            
-            if (this.mixer) this.mixer.update(dt);
-            
-            // Timer logic
-            this.timeRemaining -= dt;
-            this.timerDisplay.innerText = "Time: " + Math.ceil(this.timeRemaining) + "s";
-            
-            if (this.timeRemaining <= 0) {
-                this.triggerGameOver();
-            }
-            
-            // Screen Shake
-            if (this.shakeTime > 0) {
-                this.shakeTime -= dt;
-                const rx = (Math.random() - 0.5) * this.shakeIntensity;
-                const ry = (Math.random() - 0.5) * this.shakeIntensity;
-                this.core.camera.position.x += rx;
-                this.core.camera.position.y += ry;
-            }
-            
-            // UI Update
-            this.healthBar.style.width = Math.max(0, (this.player.userData.hp/100)*100) + '%';
-            this.pranaBar.style.width = Math.max(0, (this.player.userData.prana/100)*100) + '%';
-            
-            this.core.updateCamera(this.player.position);
+            this.updateBoss(dt);
+            this.updateMinions(dt);
+            this.fx.update(dt);
+            this.env.update(dt, this.player.position);
+            this.core.updateCamera(this.player.position, dt);
+            this.updateHUD(dt);
+        } else {
+            // Idle camera spin in menu/screens
+            this.core.render();
+            return;
         }
 
         this.core.render();
     },
-    
-    swapAvatar(key) {
-        const u = this.player.userData;
-        const avatar = this.avatars[key];
-        if (avatar && u.currentAvatar !== key) {
-            
-            // Tint Human model based on Avatar element
-            if(this.playerMaterials) {
-                this.playerMaterials.forEach(mat => {
-                    mat.color.setHex(avatar.color);
-                    mat.emissive.setHex(avatar.color).multiplyScalar(0.2); // slight glow
-                });
-            } else if (this.playerBody) {
-                this.playerBody.material.color.setHex(avatar.color);
-            }
-
-            u.speed = avatar.speed;
-            u.currentAvatar = key;
-            this.createParticle(this.player.position, avatar.color, 30);
-            
-            // Update UI Active Class
-            document.querySelectorAll('.dial-option').forEach(el => el.classList.remove('active'));
-            const idMap = { 'Digit1': 'avatar-sun', 'Digit2': 'avatar-earth', 'Digit3': 'avatar-gale', 'Digit4': 'avatar-mystic' };
-            const activeId = idMap[key];
-            if (activeId) {
-                document.getElementById(activeId).classList.add('active');
-            }
-        }
-    },
 
     updatePlayer(dt) {
-        const u = this.player.userData;
-        
-        // Avatar Swapping via Keyboard
-        Object.keys(this.avatars).forEach(key => {
-            if(this.input.keys[key]) {
-                this.swapAvatar(key);
-            }
-        });
+        const prevAvatar = this.player.currentAvatar;
+        this.player.update(dt, this.input, this.env);
 
-        // Movement
-        let dx = 0, dz = 0;
-        if(this.input.keys['KeyW']) dz -= 1;
-        if(this.input.keys['KeyS']) dz += 1;
-        if(this.input.keys['KeyA']) dx -= 1;
-        if(this.input.keys['KeyD']) dx += 1;
-        
-        let moveSpeed = u.speed;
-        
-        // Dash (Space)
-        if(u.dashTimer > 0) u.dashTimer -= dt;
-        if(this.input.keys['Space'] && u.dashTimer <= 0 && (dx!==0 || dz!==0)) {
-            moveSpeed *= 5; // Fast burst
-            u.dashTimer = 1.0; 
-            this.createParticle(this.player.position, 0xffffff, 15);
+        // Check if avatar changed via keys 1-4
+        if (this.player.currentAvatar !== prevAvatar) {
+            this.audio.play('transform');
+            this.core.shake(0.2, 0.4);
+            this.fx.spawnSparks(this.player.position, this.player.avatarData[this.player.currentAvatar].color, 25);
+            this.updateAvatarUI();
         }
-
-        if(dx !== 0 || dz !== 0) {
-            const len = Math.sqrt(dx*dx + dz*dz);
-            const moveX = (dx/len) * moveSpeed * dt;
-            const moveZ = (dz/len) * moveSpeed * dt;
-            this.player.position.x += moveX;
-            this.player.position.z += moveZ;
-            
-            // Rotate player to face movement direction
-            u.facingDir.set(dx, 0, dz).normalize();
-            const targetPos = this.player.position.clone().add(u.facingDir);
-            this.player.lookAt(targetPos);
-            
-            if (this.mixer && this.currentAction !== this.actionRun) {
-                this.actionRun.reset().fadeIn(0.2).play();
-                this.actionIdle.fadeOut(0.2);
-                this.currentAction = this.actionRun;
-            }
-        } else {
-            if (this.mixer && this.currentAction !== this.actionIdle) {
-                this.actionIdle.reset().fadeIn(0.2).play();
-                this.actionRun.fadeOut(0.2);
-                this.currentAction = this.actionIdle;
-            }
-        }
-
-        // Aiming is now handled by WASD direction, no mouse raycast needed for keyboard brawler
-        // Prana regen
-        if(u.prana < u.maxPrana) u.prana += 10 * dt;
     },
 
     updateCombat(dt) {
-        const u = this.player.userData;
-        u.attackTimer -= dt;
-        const avatar = this.avatars[u.currentAvatar];
+        const curAvatar = this.player.currentAvatar;
+        const data = this.player.avatarData[curAvatar];
 
-        // Attack with Mouse Click OR 'J' Key on keyboard
-        if ((this.input.mouse.down || this.input.keys['KeyJ']) && u.attackTimer <= 0 && u.prana >= 5) {
-            u.prana -= 5;
-            u.attackTimer = avatar.cd;
-            
-            // Aim direction uses facing direction
-            const dir = u.facingDir.clone();
-            
-            // Attack Animation (if missing arm, it just ignores)
-            if (this.playerArm) this.playerArm.rotation.x = -Math.PI / 2;
-            
-            if (avatar.type === 'range') {
-                const proj = new THREE.Mesh(new THREE.TorusGeometry(1, 0.2, 8, 16), new THREE.MeshBasicMaterial({color: avatar.color}));
-                proj.position.copy(this.player.position);
-                proj.position.y += 1;
-                proj.rotation.x = Math.PI/2;
-                proj.userData = { dir: dir, speed: 60, life: 2.0, dmg: 15, type: avatar.type };
-                this.core.scene.add(proj);
-                this.projectiles.push(proj);
-            } else if (avatar.type === 'melee_heavy') {
-                this.createParticle(this.player.position.clone().add(dir.clone().multiplyScalar(4)), avatar.color, 30);
-                this.shakeTime = 0.3; this.shakeIntensity = 1.5; // Heavy screen shake
-                this.checkMeleeHit(dir, 10, 40, avatar);
-            } else if (avatar.type === 'melee_fast') {
-                this.createParticle(this.player.position.clone().add(dir.clone().multiplyScalar(3)), avatar.color, 10);
-                this.checkMeleeHit(dir, 6, 15, avatar);
-            } else if (avatar.type === 'flamethrower') {
-                // Fire cone
-                const proj = new THREE.Mesh(new THREE.SphereGeometry(1), new THREE.MeshBasicMaterial({color: avatar.color}));
-                proj.position.copy(this.player.position).add(dir.clone().multiplyScalar(2));
-                proj.position.y += 1;
-                proj.userData = { dir: dir.clone().add(new THREE.Vector3((Math.random()-0.5)*0.5, 0, (Math.random()-0.5)*0.5)), speed: 30, life: 0.5, dmg: 8, type: avatar.type };
-                this.core.scene.add(proj);
-                this.projectiles.push(proj);
+        // 1. Primary Attack (Left click or J key)
+        const isAttacking = (this.input.mouse.down || this.input.keys['KeyJ']);
+        if (isAttacking && this.player.attackTimer <= 0 && this.player.prana >= 4) {
+            this.player.attackTimer = data.attackCd;
+            this.player.prana -= 4;
+            this.player.triggerAttackAnimation();
+
+            const aimDir = this.getAimDirection();
+
+            if (curAvatar === 'Digit1') {
+                // Suriya Divya: Throw burning Solar Chakram
+                this.fx.spawnChakram(this.player.position, aimDir, data.dmg);
+                this.audio.play('shoot_chakram');
+            } else if (curAvatar === 'Digit2') {
+                // Maha Gaja: Heavy Granite Club Slam
+                this.core.shake(0.35, 1.2);
+                this.audio.play('club_slam');
+                const hitPos = this.player.position.clone().add(aimDir.clone().multiplyScalar(3.2));
+                this.fx.spawnSparks(hitPos, 0xa87c4f, 25);
+                this.checkMeleeHits(hitPos, 4.2, data.dmg, 'earth');
+            } else if (curAvatar === 'Digit3') {
+                // Vayu Yodheya: Fast Wind Crescent Slashes
+                this.audio.play('wind_slash');
+                this.fx.spawnWindSlash(this.player.position, aimDir, data.dmg);
+                this.checkMeleeHits(this.player.position, 3.8, data.dmg, 'gale');
+            } else if (curAvatar === 'Digit4') {
+                // Shanthikarma: Roaring Holy Flame Cone
+                this.audio.play('flame_whoosh');
+                this.fx.spawnFlameJet(this.player.position, aimDir, data.dmg);
+                this.checkFlameHits(aimDir, data.dmg);
             }
         }
 
-        // Update Projectiles
-        for(let i=this.projectiles.length-1; i>=0; i--) {
-            const p = this.projectiles[i];
-            p.position.addScaledVector(p.userData.dir, p.userData.speed * dt);
-            if(p.userData.type === 'range') p.rotation.z += 10 * dt; // spin chakram
-            p.userData.life -= dt;
-            
-            // Check Hit
-            let hit = false;
-            this.enemies.forEach(e => {
-                if(p.position.distanceTo(e.position) < 3) {
-                    this.damageEnemy(e, p.userData.dmg, p.position);
-                    hit = true;
+        // 2. Avatar Special / Ultimate (Right click or K key)
+        const isSpecial = (this.input.mouse.rightDown || this.input.keys['KeyK']);
+        if (isSpecial && this.player.specialCooldown <= 0 && this.player.prana >= 25) {
+            this.player.specialCooldown = data.specialCd;
+            this.player.prana -= 25;
+            const aimDir = this.getAimDirection();
+
+            if (curAvatar === 'Digit1') {
+                // Solar Flare AOE
+                this.audio.play('special_flare');
+                this.core.shake(0.4, 1.5);
+                this.fx.spawnSolarFlareAOE(this.player.position);
+                this.checkRadialDamage(this.player.position, 16, 65, 'sun');
+            } else if (curAvatar === 'Digit2') {
+                // Earth Quake Fissure
+                this.audio.play('club_slam');
+                this.core.shake(0.5, 2.0);
+                this.fx.spawnQuakeFissure(this.player.position, aimDir);
+            } else if (curAvatar === 'Digit3') {
+                // Breeze-Step Supersonic Dash
+                this.audio.play('dash');
+                this.audio.play('wind_slash');
+                // Teleport forward 16 units, damaging all in path
+                const startPos = this.player.position.clone();
+                const targetPos = this.player.position.clone().add(aimDir.clone().multiplyScalar(14));
+                this.fx.spawnSparks(startPos, 0x00f3ff, 20);
+                this.player.position.copy(targetPos);
+                this.fx.spawnSparks(targetPos, 0x00f3ff, 25);
+                this.checkLineDamage(startPos, targetPos, 2.5, 45, 'gale');
+            } else if (curAvatar === 'Digit4') {
+                // Kovil Sacred Protection Mandala
+                this.audio.play('transform');
+                this.fx.spawnKovilMandala(this.player.position);
+            }
+        }
+
+        // Check Projectile Collisions
+        this.fx.projectiles.forEach(p => {
+            // Check Boss
+            if (this.boss && p.position.distanceTo(this.boss.position) < 3.2) {
+                this.hitBoss(this.boss, p.userData.dmg, p.userData.type, p.position);
+                p.userData.life = 0;
+            }
+            // Check Minions
+            this.minions.forEach(m => {
+                if (p.position.distanceTo(m.position) < 1.8) {
+                    this.hitMinion(m, p.userData.dmg, p.userData.type, p.position);
+                    p.userData.life = 0;
                 }
             });
+        });
 
-            if(p.userData.life <= 0 || hit) {
-                this.core.scene.remove(p);
-                this.projectiles.splice(i, 1);
+        // Check Flame Particle Collisions
+        this.fx.flameParticles.forEach(f => {
+            if (this.boss && f.position.distanceTo(this.boss.position) < 3.0) {
+                this.hitBoss(this.boss, f.userData.dmg * 0.4, 'mystic', f.position);
             }
-        }
-    },
+            this.minions.forEach(m => {
+                if (f.position.distanceTo(m.position) < 1.6) {
+                    this.hitMinion(m, f.userData.dmg * 0.4, 'mystic', f.position);
+                }
+            });
+        });
 
-    checkMeleeHit(dir, range, dmg, avatar) {
-        this.enemies.forEach(e => {
-            const toEnemy = new THREE.Vector3().subVectors(e.position, this.player.position);
-            if (toEnemy.length() < range && toEnemy.normalize().dot(dir) > 0.5) {
-                this.damageEnemy(e, dmg, e.position);
+        // Check AOE Zone effects
+        this.fx.aoeZones.forEach(z => {
+            if (z.children && z.children.length > 0 && z.userData.radius) {
+                // Kovil Mandala: Heals player, burns demons
+                const pDist = this.player.position.distanceTo(z.position);
+                if (pDist < z.userData.radius) {
+                    this.player.hp = Math.min(this.player.maxHp, this.player.hp + 8 * dt);
+                }
+                if (this.boss && this.boss.position.distanceTo(z.position) < z.userData.radius) {
+                    this.hitBoss(this.boss, 15 * dt, 'mystic', this.boss.position);
+                }
+                this.minions.forEach(m => {
+                    if (m.position.distanceTo(z.position) < z.userData.radius) {
+                        this.hitMinion(m, 20 * dt, 'mystic', m.position);
+                    }
+                });
             }
         });
     },
 
-    damageEnemy(enemy, amount, pos) {
-        enemy.userData.hp -= amount;
-        this.createParticle(pos, 0xff0000, 10);
-        this.createDamageText(pos, amount, 0xff3333);
-        
-        // Hit flash (make it white briefly)
-        if(enemy.children[0].material) {
-            const oldColor = enemy.children[0].material.color.getHex();
-            enemy.children[0].material.color.setHex(0xffffff);
-            setTimeout(() => { if(enemy.children[0]) enemy.children[0].material.color.setHex(oldColor); }, 100);
+    getAimDirection() {
+        if (this.input.mouse.worldPoint) {
+            const dir = new THREE.Vector3().subVectors(this.input.mouse.worldPoint, this.player.position);
+            dir.y = 0;
+            if (dir.length() > 0.1) return dir.normalize();
         }
-        
-        // Knockback
-        const kbDir = new THREE.Vector3().subVectors(enemy.position, this.player.position).normalize();
-        kbDir.y = 0;
-        enemy.position.addScaledVector(kbDir, 2); // Push back 2 units
+        return this.player.facingDir.clone();
+    },
 
-        if(enemy.userData.hp <= 0) {
-            this.core.scene.remove(enemy);
-            this.enemies = this.enemies.filter(e => e !== enemy);
-            this.createParticle(pos, 0xffffff, 40);
+    checkMeleeHits(centerPos, range, dmg, type) {
+        if (this.boss && centerPos.distanceTo(this.boss.position) < range + 2.0) {
+            this.hitBoss(this.boss, dmg, type, this.boss.position);
+        }
+        this.minions.forEach(m => {
+            if (centerPos.distanceTo(m.position) < range + 1.0) {
+                this.hitMinion(m, dmg, type, m.position);
+            }
+        });
+    },
+
+    checkFlameHits(dir, dmg) {
+        const coneOrigin = this.player.position;
+        if (this.boss) {
+            const toBoss = new THREE.Vector3().subVectors(this.boss.position, coneOrigin);
+            if (toBoss.length() < 9.0 && toBoss.normalize().dot(dir) > 0.6) {
+                this.hitBoss(this.boss, dmg * 0.6, 'mystic', this.boss.position);
+            }
+        }
+        this.minions.forEach(m => {
+            const toM = new THREE.Vector3().subVectors(m.position, coneOrigin);
+            if (toM.length() < 8.0 && toM.normalize().dot(dir) > 0.6) {
+                this.hitMinion(m, dmg * 0.6, 'mystic', m.position);
+            }
+        });
+    },
+
+    checkRadialDamage(center, radius, dmg, type) {
+        if (this.boss && center.distanceTo(this.boss.position) < radius + 2.0) {
+            this.hitBoss(this.boss, dmg, type, this.boss.position);
+        }
+        this.minions.forEach(m => {
+            if (center.distanceTo(m.position) < radius) {
+                this.hitMinion(m, dmg, type, m.position);
+            }
+        });
+    },
+
+    checkLineDamage(start, end, width, dmg, type) {
+        const line = new THREE.Line3(start, end);
+        const closest = new THREE.Vector3();
+
+        if (this.boss) {
+            line.closestPointToPoint(this.boss.position, true, closest);
+            if (closest.distanceTo(this.boss.position) < width + 2.0) {
+                this.hitBoss(this.boss, dmg, type, this.boss.position);
+            }
+        }
+        this.minions.forEach(m => {
+            line.closestPointToPoint(m.position, true, closest);
+            if (closest.distanceTo(m.position) < width) {
+                this.hitMinion(m, dmg, type, m.position);
+            }
+        });
+    },
+
+    hitBoss(boss, amount, type, pos) {
+        const result = boss.damage(amount, type);
+        this.audio.play('hit');
+        this.fx.spawnSparks(pos, result.isCrit ? 0xffcc00 : 0xff3300, result.isCrit ? 22 : 10);
+        this.fx.spawnDamageText(pos, result.dmg, result.isCrit);
+
+        // Counter-attack parry mechanic: If boss is telegraphing Blue Glint
+        if (boss.telegraphType === 'blue') {
+            this.audio.play('parry');
+            this.core.shake(0.3, 1.2);
+            boss.isStunned = 2.5;
+            boss.telegraphType = null;
+            this.fx.spawnDamageText(pos, 'PERFECT PARRY!', true);
+            this.fx.spawnSparks(pos, 0x00f3ff, 35);
+        }
+
+        // Combo system
+        this.addCombo();
+
+        if (result.hp <= 0) {
+            this.defeatBoss();
+        }
+    },
+
+    hitMinion(minion, amount, type, pos) {
+        minion.userData.hp -= amount;
+        this.audio.play('hit');
+        this.fx.spawnSparks(pos, 0xff2200, 8);
+        this.fx.spawnDamageText(pos, Math.floor(amount));
+        this.addCombo();
+
+        if (minion.userData.hp <= 0) {
+            this.core.scene.remove(minion);
+            this.minions = this.minions.filter(m => m !== minion);
+            this.fx.spawnSparks(pos, 0x44ff44, 25);
+            // Drop Prana
+            this.player.prana = Math.min(this.player.maxPrana, this.player.prana + 15);
+        }
+    },
+
+    addCombo() {
+        this.comboCount++;
+        this.comboTimer = 3.5;
+        this.ui.comboCount.innerText = this.comboCount;
+        this.ui.comboContainer.classList.remove('hidden');
+    },
+
+    updateBoss(dt) {
+        if (!this.boss) return;
+        this.boss.update(dt, this.player.position, this.audio);
+
+        // Periodic Attack Logic with Universal Telegraphs
+        this.boss.attackCooldown -= dt;
+        if (this.boss.attackCooldown <= 0 && this.boss.isStunned <= 0) {
+            const dist = this.boss.position.distanceTo(this.player.position);
+
+            if (dist < 6.5) {
+                // Red Glint: Unblockable heavy strike (must dodge!)
+                this.boss.setTelegraph('red', 1.0);
+                this.boss.attackCooldown = 3.0;
+                setTimeout(() => {
+                    if (this.boss && this.gameState === 'playing') {
+                        if (this.boss.position.distanceTo(this.player.position) < 7.0 && !this.player.isDashing) {
+                            this.damagePlayer(25);
+                            this.core.shake(0.4, 1.8);
+                        }
+                    }
+                }, 1000);
+            } else if (dist < 14) {
+                // Blue Glint: Parriable attack window!
+                this.boss.setTelegraph('blue', 1.2);
+                this.boss.attackCooldown = 4.0;
+                setTimeout(() => {
+                    if (this.boss && this.boss.isStunned <= 0 && this.gameState === 'playing') {
+                        if (this.boss.position.distanceTo(this.player.position) < 8.0 && !this.player.isDashing) {
+                            this.damagePlayer(18);
+                        }
+                    }
+                }, 1200);
+            }
+        }
+    },
+
+    updateMinions(dt) {
+        this.minions.forEach(m => {
+            const dir = new THREE.Vector3().subVectors(this.player.position, m.position);
+            dir.y = 0;
+            const dist = dir.length();
+
+            if (dist > 1.5) {
+                dir.normalize();
+                m.position.addScaledVector(dir, m.userData.speed * dt);
+                m.lookAt(this.player.position);
+            } else {
+                // Attack player
+                m.userData.attackTimer -= dt;
+                if (m.userData.attackTimer <= 0) {
+                    m.userData.attackTimer = 1.2;
+                    this.damagePlayer(m.userData.dmg);
+                }
+            }
+        });
+    },
+
+    damagePlayer(amount) {
+        if (this.player.isDashing) return; // Invincible during dash!
+        const isDead = this.player.damage(amount);
+        this.audio.play('hit');
+        this.core.shake(0.3, 1.0);
+        this.comboCount = 0;
+        this.ui.comboContainer.classList.add('hidden');
+
+        // Red screen damage flash
+        this.ui.flashOverlay.style.background = 'rgba(255, 0, 0, 0.4)';
+        this.ui.flashOverlay.style.opacity = '1';
+        setTimeout(() => { this.ui.flashOverlay.style.opacity = '0'; }, 120);
+
+        if (isDead) {
+            this.triggerGameOver();
+        }
+    },
+
+    defeatBoss() {
+        this.core.scene.remove(this.boss.group);
+        this.boss = null;
+        this.audio.play('demon_roar');
+        this.audio.play('transform');
+        this.core.shake(0.5, 2.5);
+
+        // Flash white victory
+        this.ui.flashOverlay.style.background = 'rgba(255, 255, 255, 0.8)';
+        this.ui.flashOverlay.style.opacity = '1';
+        setTimeout(() => { this.ui.flashOverlay.style.opacity = '0'; }, 200);
+
+        if (this.currentWave < this.maxWaves) {
+            this.gameState = 'levelclear';
+            document.getElementById('next-level-screen').classList.remove('hidden');
+        } else {
+            this.triggerVictory();
         }
     },
 
@@ -505,129 +598,56 @@ export const Game = {
         document.getElementById('game-over-screen').classList.remove('hidden');
     },
 
-    updateEnemies(dt) {
-        // Continuous Horde Spawning
-        if (this.enemies.length < 15) { // Max 15 enemies on screen
-            this.spawnTimer -= dt;
-            if (this.spawnTimer <= 0) {
-                this.spawnEnemy();
-                this.spawnTimer = 2.0; // spawn a new enemy every 2 seconds
-            }
-        }
-
-        this.enemies.forEach(enemy => {
-            const u = enemy.userData;
-            u.stateTimer += dt;
-            
-            const dir = new THREE.Vector3().subVectors(this.player.position, enemy.position);
-            dir.y = 0;
-            const dist = dir.length();
-            
-            let currentSpeed = u.speed;
-            
-            // Simple AI Logic
-            if (u.name === 'Kalu Kumaraya') {
-                if(u.stateTimer > 4) {
-                    // Teleport behind player
-                    const behind = new THREE.Vector3(0,0,-10).applyQuaternion(this.player.quaternion);
-                    enemy.position.copy(this.player.position).add(behind);
-                    u.stateTimer = 0;
-                    this.createParticle(enemy.position, 0x330033, 20);
-                }
-            } else if (u.name === 'Mahasona') {
-                if(u.stateTimer > 3 && u.stateTimer < 3.1) {
-                    // Telegraph Leap AOE
-                    this.createAOEZone(this.player.position.x, this.player.position.z, 0xff0000, 0, 5, 1.5);
-                    u.leapTarget = this.player.position.clone();
-                } else if (u.stateTimer > 4.5) {
-                    // Execute Leap
-                    enemy.position.x = u.leapTarget.x;
-                    enemy.position.z = u.leapTarget.z;
-                    this.createParticle(enemy.position, 0xff0000, 40);
-                    this.shakeTime = 0.4; this.shakeIntensity = 2.0;
-                    
-                    // Instant burst damage if player is still there
-                    const distToImpact = enemy.position.distanceTo(this.player.position);
-                    if (distToImpact < 5) {
-                        this.player.userData.hp -= 30;
-                        if(this.player.userData.hp <= 0) this.triggerGameOver();
-                    }
-                    u.stateTimer = 0;
-                }
-            } else if (u.name === 'Giri Yaka') {
-                if(u.stateTimer > 3) {
-                    // Spit Poison Arc
-                    const pGeo = new THREE.SphereGeometry(0.5);
-                    const pMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
-                    const proj = new THREE.Mesh(pGeo, pMat);
-                    proj.position.copy(enemy.position);
-                    proj.position.y += 2;
-                    proj.userData = { dir: dir.clone().normalize(), speed: 20, vy: 10 };
-                    this.core.scene.add(proj);
-                    this.enemyProjectiles.push(proj);
-                    u.stateTimer = 0;
-                }
-            }
-            
-            if (u.name === 'Mahasona' && u.stateTimer > 3) {
-                currentSpeed = 0; // Stop moving while leaping
-            }
-            
-            // Procedural Walk Animation for Enemies
-            if (currentSpeed > 0) {
-                const eTime = Date.now() * 0.01 * (currentSpeed / 10);
-                enemy.children[0].position.y = 1 + Math.abs(Math.sin(eTime)) * 0.5;
-                enemy.children[0].rotation.z = Math.sin(eTime) * 0.1;
-            }
-            
-            if (dist > 3) {
-                dir.normalize();
-                enemy.lookAt(this.player.position);
-                enemy.position.addScaledVector(dir, currentSpeed * dt);
-            } else {
-                // Attack player
-                if(!(this.player.userData.dashTimer > 0.5)) { 
-                    this.player.userData.hp -= 10 * dt;
-                    if(this.player.userData.hp <= 0) {
-                        this.triggerGameOver();
-                    }
-                }
-            }
-        });
+    triggerVictory() {
+        this.gameState = 'victory';
+        document.getElementById('victory-screen').classList.remove('hidden');
     },
 
-    updateParticles(dt) {
-        for(let i=this.particles.length-1; i>=0; i--) {
-            const p = this.particles[i];
-            p.position.x += p.userData.vx * dt;
-            p.position.y += p.userData.vy * dt;
-            p.position.z += p.userData.vz * dt;
-            p.userData.vy -= 20 * dt; // gravity
-            p.userData.life -= dt;
-            if(p.position.y < 0) p.position.y = 0;
-            
-            p.scale.setScalar(p.userData.life);
-            if(p.userData.life <= 0) {
-                this.core.scene.remove(p);
-                this.particles.splice(i, 1);
-            }
-        }
-    },
+    updateHUD(dt) {
+        // Player HP & Prana
+        const hpPct = Math.max(0, (this.player.hp / this.player.maxHp) * 100);
+        const pranaPct = Math.max(0, (this.player.prana / this.player.maxPrana) * 100);
+        this.ui.healthBar.style.width = `${hpPct}%`;
+        this.ui.healthNum.innerText = `${Math.ceil(this.player.hp)}/${this.player.maxHp}`;
+        this.ui.pranaBar.style.width = `${pranaPct}%`;
+        this.ui.pranaNum.innerText = `${Math.ceil(this.player.prana)}/${this.player.maxPrana}`;
 
-    updateDamageTexts(dt) {
-        for(let i=this.damageTexts.length-1; i>=0; i--) {
-            const txt = this.damageTexts[i];
-            txt.position.y += txt.userData.vy * dt;
-            txt.userData.life -= dt;
-            txt.material.opacity = txt.userData.life;
-            if(txt.userData.life <= 0) {
-                this.core.scene.remove(txt);
-                txt.material.map.dispose();
-                txt.material.dispose();
-                this.damageTexts.splice(i, 1);
+        // Boss Health
+        if (this.boss) {
+            const bPct = Math.max(0, (this.boss.hp / this.boss.maxHp) * 100);
+            this.ui.bossHealthBar.style.width = `${bPct}%`;
+        } else {
+            this.ui.bossHealthBar.style.width = '0%';
+        }
+
+        // Special Cooldown Overlay
+        const curData = this.player.avatarData[this.player.currentAvatar];
+        if (this.player.specialCooldown > 0) {
+            const cdPct = (this.player.specialCooldown / curData.specialCd) * 100;
+            this.ui.specialCdOverlay.style.width = `${cdPct}%`;
+        } else {
+            this.ui.specialCdOverlay.style.width = '0%';
+        }
+
+        // Wave Timer
+        this.timeRemaining -= dt;
+        this.ui.timerDisplay.innerText = `Time: ${Math.ceil(this.timeRemaining)}s`;
+        if (this.timeRemaining <= 0) {
+            this.damagePlayer(999);
+        }
+
+        // Combo decay
+        if (this.comboTimer > 0) {
+            this.comboTimer -= dt;
+            if (this.comboTimer <= 0) {
+                this.comboCount = 0;
+                this.ui.comboContainer.classList.add('hidden');
             }
         }
     }
 };
 
-Game.init();
+// Initialize game on load
+window.addEventListener('DOMContentLoaded', () => {
+    Game.init();
+});

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yaka: Seal of the Sohena - 3D Action Brawler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/index-DJKbH6cQ.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CuGNKJd8.css">
+</head>
+<body>
+    <div id="game-wrapper">
+        <!-- Main Three.js Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- UI Layer -->
+        <div id="ui-layer" class="hidden">
+            <!-- Top Header Status -->
+            <div class="top-bar">
+                <div class="stats-panel">
+                    <div class="bar-bg">
+                        <div id="health-bar" class="bar health"></div>
+                        <span class="bar-label">HP <span id="health-num">100/100</span></span>
+                    </div>
+                    <div class="bar-bg">
+                        <div id="prana-bar" class="bar prana"></div>
+                        <span class="bar-label">PRANA <span id="prana-num">100/100</span></span>
+                    </div>
+                </div>
+
+                <!-- Boss Health Bar -->
+                <div id="boss-hud" class="boss-panel">
+                    <div class="boss-info">
+                        <span id="boss-name" class="boss-title">MAHASONA</span>
+                        <span id="boss-sub" class="boss-subtitle">THE CEMETERY GIANT</span>
+                    </div>
+                    <div class="boss-bar-bg">
+                        <div id="boss-health-bar" class="bar boss-health"></div>
+                    </div>
+                </div>
+
+                <div class="objective-panel">
+                    <h2 id="level-display">Wave 1</h2>
+                    <p id="timer-display">Time: 60s</p>
+                    <button id="audio-toggle-btn" class="icon-btn" title="Toggle Sound">🔊 Sound</button>
+                </div>
+            </div>
+
+            <!-- Combo Counter -->
+            <div id="combo-container" class="combo-badge hidden">
+                <span id="combo-count">0</span>
+                <span class="combo-text">RITUAL COMBO</span>
+            </div>
+
+            <!-- Ability & Controls Quickbar -->
+            <div class="controls-overlay">
+                <div class="control-badge">
+                    <span class="key-tag">L-CLICK / J</span>
+                    <span class="key-desc" id="current-primary-name">Attack</span>
+                </div>
+                <div class="control-badge special-badge" id="special-badge">
+                    <span class="key-tag">R-CLICK / K</span>
+                    <span class="key-desc" id="current-special-name">Avatar Special</span>
+                    <div id="special-cd-overlay" class="cd-overlay"></div>
+                </div>
+                <div class="control-badge">
+                    <span class="key-tag">SPACE</span>
+                    <span class="key-desc">Dash</span>
+                </div>
+            </div>
+            
+            <!-- Yantra Bandhana Avatar Dial -->
+            <div id="transformation-dial">
+                <div class="dial-title">YANTRA BANDHANA</div>
+                <div class="dial-option active" id="avatar-sun" data-key="Digit1">
+                    <span class="key">1</span>
+                    <div class="avatar-desc">
+                        <span class="name">Suriya Divya</span>
+                        <span class="sub">Solar Radiant • Chakrams</span>
+                    </div>
+                </div>
+                <div class="dial-option" id="avatar-earth" data-key="Digit2">
+                    <span class="key">2</span>
+                    <div class="avatar-desc">
+                        <span class="name">Maha Gaja</span>
+                        <span class="sub">Earth Titan • Granite Club</span>
+                    </div>
+                </div>
+                <div class="dial-option" id="avatar-gale" data-key="Digit3">
+                    <span class="key">3</span>
+                    <div class="avatar-desc">
+                        <span class="name">Vayu Yodheya</span>
+                        <span class="sub">Gale Hunter • Twin Blades</span>
+                    </div>
+                </div>
+                <div class="dial-option" id="avatar-mystic" data-key="Digit4">
+                    <span class="key">4</span>
+                    <div class="avatar-desc">
+                        <span class="name">Shanthikarma</span>
+                        <span class="sub">Mystic • Pandama Fire</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screens -->
+        <div id="menu-screen" class="screen">
+            <div class="screen-content">
+                <h1 class="title">YAKA</h1>
+                <h2 class="subtitle">Seal of the Sohena</h2>
+                <div class="lore-box">
+                    <p>Enter the rain-swept ancient Sri Lankan graveyard. Harness the sacred <strong>Yantra Bandhana</strong> to transform instantly between four ancestral warrior-avatars to purge iconic folklore demons!</p>
+                </div>
+                
+                <div class="avatar-preview-cards">
+                    <div class="card card-sun">
+                        <span class="card-num">[1]</span>
+                        <strong>Suriya Divya</strong>
+                        <p>Twin burning Solar Chakrams • Solar Flare AOE</p>
+                    </div>
+                    <div class="card card-earth">
+                        <span class="card-num">[2]</span>
+                        <strong>Maha Gaja</strong>
+                        <p>Colossal Granite Club • Ground Quake Fissure</p>
+                    </div>
+                    <div class="card card-gale">
+                        <span class="card-num">[3]</span>
+                        <strong>Vayu Yodheya</strong>
+                        <p>Curved Kastane Blades • Breeze-Step Teleport</p>
+                    </div>
+                    <div class="card card-mystic">
+                        <span class="card-num">[4]</span>
+                        <strong>Shanthikarma</strong>
+                        <p>Pandama Flame Cone • Kovil Protection Mandala</p>
+                    </div>
+                </div>
+
+                <button id="start-btn" class="btn primary">Initiate Exorcism</button>
+                <p class="controls-hint">WASD: Move | Left-Click: Primary Attack | Right-Click: Avatar Special | 1-4: Swap Avatars | Space: Dash</p>
+            </div>
+        </div>
+        
+        <div id="game-over-screen" class="screen hidden">
+            <div class="screen-content">
+                <h1 class="title death-title">SPIRIT CONSUMED</h1>
+                <p id="final-score" class="score-text">The graveyard claims another soul.</p>
+                <button id="restart-btn" class="btn primary">Rise Again</button>
+            </div>
+        </div>
+
+        <div id="next-level-screen" class="screen hidden">
+            <div class="screen-content">
+                <h1 class="title">DEMON BANISHED</h1>
+                <p id="clear-desc" class="score-text">The demon has been sealed within the sacred reliquary.</p>
+                <button id="next-level-btn" class="btn primary">Next Demon</button>
+            </div>
+        </div>
+
+        <div id="victory-screen" class="screen hidden">
+            <div class="screen-content">
+                <h1 class="title victory-title">SOHENA CLEANSED</h1>
+                <p class="score-text">All ancestral demons have been sealed! The curse is broken.</p>
+                <button id="victory-restart-btn" class="btn primary">Play Again</button>
+            </div>
+        </div>
+        
+        <div id="flash-overlay"></div>
+    </div>
+
+</body>
+</html>
