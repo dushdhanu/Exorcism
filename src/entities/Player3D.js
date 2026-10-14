@@ -405,6 +405,29 @@ export class Player3D {
         if (this.prana < this.maxPrana) {
             this.prana = Math.min(this.maxPrana, this.prana + 12 * dt);
         }
+
+        // Awakening Timer
+        if (this.awakeningCooldown > 0) this.awakeningCooldown -= dt;
+        if (this.isAwakened) {
+            this.awakeningTimer -= dt;
+            // Pulsing golden radiant aura
+            const pulse = (Math.sin(performance.now() * 0.015) + 1) * 0.5;
+            this.relicCoreMat.color.setHex(pulse > 0.5 ? 0xffffff : 0xffcc00);
+            this.headband.material.color.setHex(0xffffff);
+
+            if (this.awakeningTimer <= 0) {
+                this.isAwakened = false;
+                this.awakeningCooldown = 30.0;
+                this.setAvatar(this.currentAvatar); // Restore original visual state
+            }
+        }
+    }
+
+    triggerAwakening() {
+        if (this.isAwakened || this.awakeningCooldown > 0) return false;
+        this.isAwakened = true;
+        this.awakeningTimer = this.awakeningDuration;
+        return true;
     }
 
     triggerAttackAnimation() {
@@ -413,7 +436,16 @@ export class Player3D {
     }
 
     damage(amount) {
-        this.hp = Math.max(0, this.hp - amount);
-        return this.hp <= 0;
+        // 50% damage reduction in Awakening mode
+        const actualDmg = this.isAwakened ? amount * 0.5 : amount;
+        this.hp = Math.max(0, this.hp - actualDmg);
+
+        // Desperation trigger: Drop below 25% HP activates Anuradhapura Awakening!
+        if (this.hp > 0 && this.hp <= 25 && !this.isAwakened && this.awakeningCooldown <= 0) {
+            this.triggerAwakening();
+            return { isDead: false, triggeredAwakening: true };
+        }
+
+        return { isDead: this.hp <= 0, triggeredAwakening: false };
     }
 }

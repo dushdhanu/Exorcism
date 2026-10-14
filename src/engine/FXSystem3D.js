@@ -197,6 +197,73 @@ export class FXSystem3D {
         this.aoeZones.push(group);
     }
 
+    spawnPoisonPool(pos) {
+        // Lingering emerald toxic sludge pool dropped by Giri Yaka
+        const group = new THREE.Group();
+        group.position.set(pos.x, 0.05, pos.z);
+
+        const poolGeo = new THREE.CircleGeometry(4.0, 24);
+        const poolMat = new THREE.MeshBasicMaterial({
+            color: 0x11aa22,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        });
+        const pool = new THREE.Mesh(poolGeo, poolMat);
+        pool.rotation.x = -Math.PI / 2;
+        group.add(pool);
+
+        // Bubbling green light
+        const light = new THREE.PointLight(0x00ff33, 1.8, 8);
+        light.position.y = 0.5;
+        group.add(light);
+
+        group.userData = {
+            type: 'poison_pool',
+            life: 9.0,
+            radius: 4.0,
+            dmg: 12
+        };
+
+        this.scene.add(group);
+        this.aoeZones.push(group);
+    }
+
+    spawnSpectralHound(pos, dir) {
+        // Mahasona Phase 2: Ferocious Black Spectral Hound stampede
+        const group = new THREE.Group();
+        group.position.copy(pos);
+        group.position.y = 1.0;
+
+        const bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x050508,
+            emissive: 0x440011,
+            roughness: 0.6
+        });
+        const houndBody = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 2.6), bodyMat);
+        group.add(houndBody);
+
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.14), eyeMat);
+        eye1.position.set(-0.35, 0.4, 1.3);
+        const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.14), eyeMat);
+        eye2.position.set(0.35, 0.4, 1.3);
+        group.add(eye1); group.add(eye2);
+
+        group.lookAt(pos.clone().add(dir));
+
+        group.userData = {
+            type: 'spectral_hound',
+            dir: dir.clone().normalize(),
+            speed: 36,
+            life: 3.0,
+            dmg: 28
+        };
+
+        this.scene.add(group);
+        this.projectiles.push(group);
+    }
+
     spawnSparks(pos, colorHex, count = 15) {
         for (let i = 0; i < count; i++) {
             const size = 0.15 + Math.random() * 0.2;

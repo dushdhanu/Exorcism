@@ -278,11 +278,85 @@ canvas {
     border-color: var(--accent-gold);
 }
 
+.awakening-badge {
+    border-color: #ffcc00;
+    box-shadow: 0 0 10px rgba(255, 204, 0, 0.3);
+}
+
 .cd-overlay {
     position: absolute;
     top: 0; left: 0; width: 0%; height: 100%;
     background: rgba(255, 0, 0, 0.35);
     transition: width 0.1s linear;
+}
+
+/* Radar Minimap in top right */
+#radar-container {
+    position: absolute;
+    top: 100px;
+    right: 24px;
+    background: var(--glass-bg);
+    border: 1px solid rgba(0, 243, 255, 0.35);
+    border-radius: 50%;
+    padding: 6px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#radar-canvas {
+    border-radius: 50%;
+    display: block;
+}
+
+.radar-label {
+    position: absolute;
+    bottom: -18px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--accent-gold);
+}
+
+/* Anuradhapura Awakening Banner */
+.awakening-popup {
+    position: absolute;
+    top: 25%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, rgba(255, 170, 0, 0.95), rgba(255, 68, 0, 0.95));
+    border: 2px solid #fff;
+    padding: 16px 36px;
+    border-radius: 40px;
+    box-shadow: 0 0 50px rgba(255, 200, 0, 0.9);
+    text-align: center;
+    color: #000;
+    animation: awakeningFlash 1.2s ease-out;
+    pointer-events: none;
+    z-index: 80;
+}
+
+.awakening-popup h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: 2px;
+}
+
+.awakening-popup p {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+
+@keyframes awakeningFlash {
+    0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+    80% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.0); opacity: 0; }
 }
 
 /* Transformation Dial in bottom right */
